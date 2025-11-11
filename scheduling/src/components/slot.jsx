@@ -158,45 +158,41 @@ export default function ProfessionalBookingForm() {
 
   // -----------------------------
   // Create Booking
-  const createBooking = async () => {
-    if (!selectedService || !startDate || !endDate) {
-      setMessage("⚠️ Please fill in all fields!");
-      return;
-    }
+const createBooking = async () => {
+  if (!selectedService || !startDate || !endDate) {
+    setMessage("⚠️ Please fill in all fields!");
+    return;
+  }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
 
-    if (start < now) {
-      setMessage("❌ Start date cannot be in the past!");
-      return;
-    }
-    if (end <= start) {
-      setMessage("❌ End date must be after start date!");
-      return;
-    }
+  console.log("Raw startDate input:", startDate);
+  console.log("Raw endDate input:", endDate);
+  console.log("Date objects:", start, end);
+  console.log("ISOString sent to backend:", start.toISOString(), end.toISOString());
 
-    try {
-      setLoading(true);
-      const payload = {
-        service_id: Number(selectedService),
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
-      };
+  try {
+    setLoading(true);
+    const payload = {
+      service_id: Number(selectedService),
+      start_date: start.toISOString(),
+      end_date: end.toISOString(),
+    };
 
-      const res = await axios.post(`${API_URL}/bookings/`, payload);
+    const res = await axios.post(`${API_URL}/bookings/`, payload);
+    console.log("Response from backend:", res.data);
+    setMessage(`✅ Booking created for "${res.data.service_name}"`);
+    fetchBookings();
+    resetForm();
+  } catch (err) {
+    console.error("Error creating booking:", err);
+    setMessage(err.response?.data?.detail || "❌ Error creating booking");
+  } finally {
+    setLoading(false);
+  }
+};
 
-      setMessage(`✅ Booking created for "${res.data.service_name}"`);
-      fetchBookings();
-      resetForm();
-    } catch (err) {
-      console.error("Error creating booking:", err);
-      setMessage(err.response?.data?.detail || "❌ Error creating booking");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // -----------------------------
   // Edit Booking
