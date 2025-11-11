@@ -35,27 +35,15 @@ const Booking = ({ currentUser }) => {
     setMessage(null);
 
     try {
-      const startUTC = new Date(form.start_date).toISOString();
-      const endUTC = new Date(form.end_date).toISOString();
-
-      console.log("Checking availability:");
-      console.log("Local start:", form.start_date);
-      console.log("Local end:", form.end_date);
-      console.log("UTC start:", startUTC);
-      console.log("UTC end:", endUTC);
-
       const params = {
         service_id: form.service_id,
-        start_date: startUTC,
-        end_date: endUTC,
+        start_date: form.start_date,
+        end_date: form.end_date,
       };
 
-      const res = await axios.get(
-        "https://manpower.cmti.online/bookings/check",
-        { params }
-      );
-
-      console.log("Check response:", res.data);
+      const res = await axios.get("https://manpower.cmti.online/bookings/check", {
+        params,
+      });
 
       if (res.data.available) {
         setAvailable(true);
@@ -65,7 +53,6 @@ const Booking = ({ currentUser }) => {
         setMessage({ type: "error", text: res.data.message });
       }
     } catch (err) {
-      console.error("Check error:", err.response || err);
       setAvailable(false);
       setMessage({
         type: "error",
@@ -76,31 +63,20 @@ const Booking = ({ currentUser }) => {
     }
   };
 
-  // ✅ Step 2: Book service
+  // ✅ Step 2: Book service (includes customer)
   const handleBook = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
-      const startUTC = new Date(form.start_date).toISOString();
-      const endUTC = new Date(form.end_date).toISOString();
-
-      console.log("Booking service:");
-      console.log("Local start:", form.start_date);
-      console.log("Local end:", form.end_date);
-      console.log("UTC start:", startUTC);
-      console.log("UTC end:", endUTC);
-
       const payload = {
-        service_id: parseInt(form.service_id),
-        service_name: form.service_name || null,
-        start_date: startUTC,
-        end_date: endUTC,
-        customer: form.customer,
+        service_id: form.service_id,
+        service_name: form.service_name || null, // optional field
+        start_date: form.start_date,
+        end_date: form.end_date,
+        customer: form.customer, // ✅ include customer name
       };
-
-      console.log("Payload sent to backend:", payload);
 
       const res = await axios.post(
         "https://manpower.cmti.online/bookings/",
@@ -109,8 +85,6 @@ const Booking = ({ currentUser }) => {
           params: { assigned_by: currentUser?.username || "system" },
         }
       );
-
-      console.log("Booking response:", res.data);
 
       setMessage({
         type: "success",
@@ -127,7 +101,6 @@ const Booking = ({ currentUser }) => {
       });
       setAvailable(false);
     } catch (err) {
-      console.error("Booking error:", err.response || err);
       setMessage({
         type: "error",
         text: err.response?.data?.detail || "Booking failed.",
@@ -171,7 +144,7 @@ const Booking = ({ currentUser }) => {
               Service ID
             </label>
             <input
-              type="number"
+              type="text"
               name="service_id"
               value={form.service_id}
               onChange={handleChange}
@@ -181,7 +154,7 @@ const Booking = ({ currentUser }) => {
             />
           </div>
 
-          {/* Service Name */}
+          {/* Service Name (optional) */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Service Name
