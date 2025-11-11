@@ -175,10 +175,11 @@ const createBooking = async () => {
   try {
     setLoading(true);
     const payload = {
-      service_id: Number(selectedService),
-      start_date: start.toISOString(),
-      end_date: end.toISOString(),
-    };
+    service_id: Number(selectedService),
+    start_date: startDate, // e.g., "2025-11-25T15:59"
+    end_date: endDate,
+  };
+
 
     const res = await axios.post(`${API_URL}/bookings/`, payload);
     console.log("Response from backend:", res.data);
