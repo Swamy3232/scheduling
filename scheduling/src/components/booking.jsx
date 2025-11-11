@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-import { Calendar, Clock, CheckCircle, Loader2, User } from "lucide-react";
+import { Calendar, Clock, CheckCircle, Loader2, User, UserCircle } from "lucide-react";
 
 const Booking = ({ currentUser }) => {
   const [form, setForm] = useState({
@@ -8,6 +8,7 @@ const Booking = ({ currentUser }) => {
     service_name: "",
     start_date: "",
     end_date: "",
+    customer: "",
   });
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ const Booking = ({ currentUser }) => {
         end_date: form.end_date,
       };
 
-      const res = await axios.get("https://manpower.cmti.online/bookings/", {
+      const res = await axios.get("https://manpower.cmti.online/bookings/check", {
         params,
       });
 
@@ -65,14 +66,16 @@ const Booking = ({ currentUser }) => {
         service_id: form.service_id,
         start_date: form.start_date,
         end_date: form.end_date,
-        assigned_by: currentUser?.username || "unknown", // assign by current logged-in user
+        customer: form.customer, // 🆕 include customer field
       };
 
-      const res = await axios.post("https://manpower.cmti.online/bookings/", payload);
+      const res = await axios.post("https://manpower.cmti.online/bookings/", payload, {
+        params: { assigned_by: currentUser?.username || "system" },
+      });
 
       setMessage({
         type: "success",
-        text: res.data.message || "Booking confirmed!",
+        text: res.data.message || "✅ Booking confirmed!",
       });
 
       setForm({
@@ -80,6 +83,7 @@ const Booking = ({ currentUser }) => {
         service_name: "",
         start_date: "",
         end_date: "",
+        customer: "",
       });
       setAvailable(false);
     } catch (err) {
@@ -104,6 +108,22 @@ const Booking = ({ currentUser }) => {
           onSubmit={available ? handleBook : handleCheck}
           className="space-y-6"
         >
+          {/* Customer Name */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-blue-500" /> Customer Name
+            </label>
+            <input
+              type="text"
+              name="customer"
+              value={form.customer}
+              onChange={handleChange}
+              required
+              placeholder="Enter customer name"
+              className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-400 transition"
+            />
+          </div>
+
           {/* Service ID */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">Service ID</label>
@@ -118,7 +138,7 @@ const Booking = ({ currentUser }) => {
             />
           </div>
 
-          {/* Service Name */}
+          {/* Service Name (optional) */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">Service Name</label>
             <input
