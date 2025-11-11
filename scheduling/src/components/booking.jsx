@@ -29,60 +29,78 @@ const Booking = ({ currentUser }) => {
   };
 
   // ✅ Step 1: Check availability
- const handleCheck = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setMessage(null);
+  const handleCheck = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
 
-  try {
-    const params = {
-      service_id: form.service_id,
-      start_date: new Date(form.start_date).toISOString(), // convert to ISO
-      end_date: new Date(form.end_date).toISOString(),
-    };
+    try {
+      const startUTC = new Date(form.start_date).toISOString();
+      const endUTC = new Date(form.end_date).toISOString();
 
-    const res = await axios.get(
-      "https://manpower.cmti.online/bookings/check",
-      { params }
-    );
+      console.log("Checking availability:");
+      console.log("Local start:", form.start_date);
+      console.log("Local end:", form.end_date);
+      console.log("UTC start:", startUTC);
+      console.log("UTC end:", endUTC);
 
-    if (res.data.available) {
-      setAvailable(true);
-      setMessage({ type: "success", text: res.data.message });
-    } else {
+      const params = {
+        service_id: form.service_id,
+        start_date: startUTC,
+        end_date: endUTC,
+      };
+
+      const res = await axios.get(
+        "https://manpower.cmti.online/bookings/check",
+        { params }
+      );
+
+      console.log("Check response:", res.data);
+
+      if (res.data.available) {
+        setAvailable(true);
+        setMessage({ type: "success", text: res.data.message });
+      } else {
+        setAvailable(false);
+        setMessage({ type: "error", text: res.data.message });
+      }
+    } catch (err) {
+      console.error("Check error:", err.response || err);
       setAvailable(false);
-      setMessage({ type: "error", text: res.data.message });
+      setMessage({
+        type: "error",
+        text: err.response?.data?.detail || "Slot not available.",
+      });
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setAvailable(false);
-    setMessage({
-      type: "error",
-      text: err.response?.data?.detail || "Slot not available.",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-
-  // ✅ Step 2: Book service (includes customer)
+  // ✅ Step 2: Book service
   const handleBook = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
-     // Just send form.start_date as-is
+      const startUTC = new Date(form.start_date).toISOString();
+      const endUTC = new Date(form.end_date).toISOString();
+
+      console.log("Booking service:");
+      console.log("Local start:", form.start_date);
+      console.log("Local end:", form.end_date);
+      console.log("UTC start:", startUTC);
+      console.log("UTC end:", endUTC);
+
       const payload = {
-  service_id: form.service_id,
-  service_name: form.service_name || null,
-  start_date: new Date(form.start_date).toISOString(), // converts local to UTC
-  end_date: new Date(form.end_date).toISOString(),
-  customer: form.customer,
-};
+        service_id: parseInt(form.service_id),
+        service_name: form.service_name || null,
+        start_date: startUTC,
+        end_date: endUTC,
+        customer: form.customer,
+      };
 
-
-
+      console.log("Payload sent to backend:", payload);
 
       const res = await axios.post(
         "https://manpower.cmti.online/bookings/",
@@ -91,6 +109,8 @@ const Booking = ({ currentUser }) => {
           params: { assigned_by: currentUser?.username || "system" },
         }
       );
+
+      console.log("Booking response:", res.data);
 
       setMessage({
         type: "success",
@@ -107,6 +127,7 @@ const Booking = ({ currentUser }) => {
       });
       setAvailable(false);
     } catch (err) {
+      console.error("Booking error:", err.response || err);
       setMessage({
         type: "error",
         text: err.response?.data?.detail || "Booking failed.",
@@ -150,7 +171,7 @@ const Booking = ({ currentUser }) => {
               Service ID
             </label>
             <input
-              type="text"
+              type="number"
               name="service_id"
               value={form.service_id}
               onChange={handleChange}
@@ -160,7 +181,7 @@ const Booking = ({ currentUser }) => {
             />
           </div>
 
-          {/* Service Name (optional) */}
+          {/* Service Name */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Service Name
