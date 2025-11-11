@@ -29,39 +29,41 @@ const Booking = ({ currentUser }) => {
   };
 
   // ✅ Step 1: Check availability
-  const handleCheck = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
+ const handleCheck = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage(null);
 
-    try {
-      const params = {
-        service_id: form.service_id,
-        start_date: form.start_date,
-        end_date: form.end_date,
-      };
+  try {
+    const params = {
+      service_id: form.service_id,
+      start_date: new Date(form.start_date).toISOString(), // convert to ISO
+      end_date: new Date(form.end_date).toISOString(),
+    };
 
-      const res = await axios.get("https://manpower.cmti.online/bookings/check", {
-        params,
-      });
+    const res = await axios.get(
+      "https://manpower.cmti.online/bookings/check",
+      { params }
+    );
 
-      if (res.data.available) {
-        setAvailable(true);
-        setMessage({ type: "success", text: res.data.message });
-      } else {
-        setAvailable(false);
-        setMessage({ type: "error", text: res.data.message });
-      }
-    } catch (err) {
+    if (res.data.available) {
+      setAvailable(true);
+      setMessage({ type: "success", text: res.data.message });
+    } else {
       setAvailable(false);
-      setMessage({
-        type: "error",
-        text: err.response?.data?.detail || "Slot not available.",
-      });
-    } finally {
-      setLoading(false);
+      setMessage({ type: "error", text: res.data.message });
     }
-  };
+  } catch (err) {
+    setAvailable(false);
+    setMessage({
+      type: "error",
+      text: err.response?.data?.detail || "Slot not available.",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ✅ Step 2: Book service (includes customer)
   const handleBook = async (e) => {
@@ -71,12 +73,13 @@ const Booking = ({ currentUser }) => {
 
     try {
       const payload = {
-        service_id: form.service_id,
-        service_name: form.service_name || null, // optional field
-        start_date: form.start_date,
-        end_date: form.end_date,
-        customer: form.customer, // ✅ include customer name
-      };
+      service_id: form.service_id,
+      service_name: form.service_name || null,
+      start_date: new Date(form.start_date).toISOString(),
+      end_date: new Date(form.end_date).toISOString(),
+      customer: form.customer,
+    };
+
 
       const res = await axios.post(
         "https://manpower.cmti.online/bookings/",
