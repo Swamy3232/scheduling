@@ -298,7 +298,7 @@ const createBooking = async () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">📅 Service Booking Management</h2>
+          <h2 className="text-2xl font-bold text-gray-800">📅 Service Bookingdfasfasfasd Management</h2>
           <p className="text-gray-600 mt-1">Manage and track all service bookings</p>
         </div>
         <div className="flex items-center space-x-2 mt-4 md:mt-0">
