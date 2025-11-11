@@ -49,12 +49,10 @@ export default function ProfessionalBookingForm() {
   }, []);
 
   // -----------------------------
-  // Utility: Convert ISO to Local Date for datetime-local input
-  const formatForInput = (isoString) => {
+  // Time Helpers: convert ISO/UTC to local IST display
+  const formatLocalDateTime = (isoString) => {
     const dt = new Date(isoString);
-    const offset = dt.getTimezoneOffset() * 60000; // in ms
-    const localDate = new Date(dt.getTime() - offset);
-    return localDate.toISOString().slice(0,16);
+    return dt.toLocaleString("en-IN", { hour12: false });
   };
 
   // Booking Status
@@ -74,50 +72,83 @@ export default function ProfessionalBookingForm() {
 
     if (!booking.manpower_name) {
       if (status === "completed") {
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Expired (Unassigned)</span>;
+        return (
+          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+            Expired (Unassigned)
+          </span>
+        );
       }
-      return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">Pending Assignment</span>;
+      return (
+        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+          Pending Assignment
+        </span>
+      );
     }
 
     switch (status) {
       case "completed":
-        return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">Completed</span>;
+        return (
+          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+            Completed
+          </span>
+        );
       case "in-progress":
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">In Progress</span>;
+        return (
+          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+            In Progress
+          </span>
+        );
       case "upcoming":
-        return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Scheduled</span>;
+        return (
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+            Scheduled
+          </span>
+        );
       default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Scheduled</span>;
+        return (
+          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+            Scheduled
+          </span>
+        );
     }
   };
 
+  // -----------------------------
   // Filters
   useEffect(() => {
     let filtered = bookings;
 
     if (serviceFilter) {
-      filtered = filtered.filter(b => b.service_name.toLowerCase().includes(serviceFilter.toLowerCase()));
+      filtered = filtered.filter((b) =>
+        b.service_name.toLowerCase().includes(serviceFilter.toLowerCase())
+      );
     }
 
     if (dateFilter) {
       const filterDate = new Date(dateFilter);
-      filtered = filtered.filter(b => {
+      filtered = filtered.filter((b) => {
         const bookingDate = new Date(b.start_date);
         return bookingDate.toDateString() === filterDate.toDateString();
       });
     }
 
     if (statusFilter) {
-      filtered = filtered.filter(b => {
+      filtered = filtered.filter((b) => {
         const status = getBookingStatus(b);
         const hasManpower = !!b.manpower_name;
         switch (statusFilter) {
-          case "assigned": return hasManpower;
-          case "unassigned": return !hasManpower;
-          case "completed": return status === "completed";
-          case "in-progress": return status === "in-progress";
-          case "upcoming": return status === "upcoming";
-          default: return true;
+          case "assigned":
+            return hasManpower;
+          case "unassigned":
+            return !hasManpower;
+          case "completed":
+            return status === "completed";
+          case "in-progress":
+            return status === "in-progress";
+          case "upcoming":
+            return status === "upcoming";
+          default:
+            return true;
         }
       });
     }
@@ -151,10 +182,11 @@ export default function ProfessionalBookingForm() {
       const payload = {
         service_id: Number(selectedService),
         start_date: start.toISOString(),
-        end_date: end.toISOString()
+        end_date: end.toISOString(),
       };
 
       const res = await axios.post(`${API_URL}/bookings/`, payload);
+
       setMessage(`✅ Booking created for "${res.data.service_name}"`);
       fetchBookings();
       resetForm();
@@ -176,9 +208,9 @@ export default function ProfessionalBookingForm() {
     }
 
     setEditId(b.booking_id);
-    setSelectedService(services.find(s => s.service_name === b.service_name)?.service_id || "");
-    setStartDate(formatForInput(b.start_date));
-    setEndDate(formatForInput(b.end_date));
+    setSelectedService(services.find((s) => s.service_name === b.service_name)?.service_id || "");
+    setStartDate(new Date(b.start_date).toISOString().slice(0, 16));
+    setEndDate(new Date(b.end_date).toISOString().slice(0, 16));
     setMessage(`✏️ Editing booking #${b.booking_id}`);
   };
 
@@ -197,10 +229,12 @@ export default function ProfessionalBookingForm() {
       setLoading(true);
       const payload = {
         start_date: start.toISOString(),
-        end_date: end.toISOString()
+        end_date: end.toISOString(),
       };
 
-      await axios.put(`${API_URL}/bookings/${editId}?start_date=${payload.start_date}&end_date=${payload.end_date}`);
+      await axios.put(
+        `${API_URL}/bookings/${editId}?start_date=${payload.start_date}&end_date=${payload.end_date}`
+      );
       setMessage("✅ Booking updated successfully");
       fetchBookings();
       resetForm();
@@ -215,7 +249,7 @@ export default function ProfessionalBookingForm() {
   // -----------------------------
   // Delete Booking
   const deleteBooking = async (bookingId) => {
-    const booking = bookings.find(b => b.booking_id === bookingId);
+    const booking = bookings.find((b) => b.booking_id === bookingId);
     if (booking) {
       const status = getBookingStatus(booking);
       if (status === "completed" || status === "in-progress") {
@@ -253,11 +287,11 @@ export default function ProfessionalBookingForm() {
   // Statistics
   const getStatistics = () => ({
     total: bookings.length,
-    assigned: bookings.filter(b => b.manpower_name).length,
-    unassigned: bookings.filter(b => !b.manpower_name).length,
-    completed: bookings.filter(b => getBookingStatus(b) === "completed").length,
-    inProgress: bookings.filter(b => getBookingStatus(b) === "in-progress").length,
-    upcoming: bookings.filter(b => getBookingStatus(b) === "upcoming").length
+    assigned: bookings.filter((b) => b.manpower_name).length,
+    unassigned: bookings.filter((b) => !b.manpower_name).length,
+    completed: bookings.filter((b) => getBookingStatus(b) === "completed").length,
+    inProgress: bookings.filter((b) => getBookingStatus(b) === "in-progress").length,
+    upcoming: bookings.filter((b) => getBookingStatus(b) === "upcoming").length,
   });
   const stats = getStatistics();
 
@@ -326,15 +360,18 @@ export default function ProfessionalBookingForm() {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
             <input type="text" placeholder="Filter by service..." value={serviceFilter} onChange={(e)=>setServiceFilter(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
           </div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input type="date" value={dateFilter} onChange={(e)=>setDateFilter(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
           </div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="">All Status</option>
@@ -377,58 +414,25 @@ export default function ProfessionalBookingForm() {
                   <tr key={b.booking_id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{b.booking_id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.service_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-700">
-                      {b.manpower_name || "—"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {new Date(b.start_date).toLocaleString("en-IN", { hour12: false })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {new Date(b.end_date).toLocaleString("en-IN", { hour12: false })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{getStatusBadge(b)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.assigned_by || "—"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm flex space-x-2">
-                      <button onClick={() => handleEdit(b)} disabled={!canEdit}
-                        className={`px-3 py-1 rounded-lg text-white text-xs ${canEdit ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}`}>
-                        ✏️ Edit
-                      </button>
-                      <button onClick={() => deleteBooking(b.booking_id)}
-                        className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs">🗑️ Delete</button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.manpower_name || "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.start_date)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.end_date)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(b)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.assigned_by || "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap flex space-x-2">
+                      <button onClick={()=>handleEdit(b)} disabled={!canEdit} className="text-blue-600 hover:text-blue-800 disabled:text-gray-300">✏️ Edit</button>
+                      <button onClick={()=>deleteBooking(b.booking_id)} disabled={!canEdit} className="text-red-600 hover:text-red-800 disabled:text-gray-300">🗑️ Delete</button>
                     </td>
                   </tr>
                 );
               })}
+              {filteredBookings.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500 text-sm">No bookings found</td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">Total Bookings</div>
-          <div className="text-xl font-bold text-gray-800">{stats.total}</div>
-        </div>
-        <div className="bg-green-50 border border-green-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">Assigned</div>
-          <div className="text-xl font-bold text-green-800">{stats.assigned}</div>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">Unassigned</div>
-          <div className="text-xl font-bold text-yellow-800">{stats.unassigned}</div>
-        </div>
-        <div className="bg-purple-50 border border-purple-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">Completed</div>
-          <div className="text-xl font-bold text-purple-800">{stats.completed}</div>
-        </div>
-        <div className="bg-green-50 border border-green-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">In Progress</div>
-          <div className="text-xl font-bold text-green-800">{stats.inProgress}</div>
-        </div>
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center">
-          <div className="text-sm text-gray-500">Upcoming</div>
-          <div className="text-xl font-bold text-blue-800">{stats.upcoming}</div>
         </div>
       </div>
     </div>
