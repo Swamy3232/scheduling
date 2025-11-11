@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Calendar, Clock, CheckCircle, Loader2, User, UserCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  Loader2,
+  User,
+  UserCircle,
+} from "lucide-react";
 
 const Booking = ({ currentUser }) => {
   const [form, setForm] = useState({
@@ -14,6 +21,7 @@ const Booking = ({ currentUser }) => {
   const [loading, setLoading] = useState(false);
   const [available, setAvailable] = useState(false);
 
+  // Handle input changes
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setAvailable(false);
@@ -55,7 +63,7 @@ const Booking = ({ currentUser }) => {
     }
   };
 
-  // ✅ Step 2: Book
+  // ✅ Step 2: Book service (includes customer)
   const handleBook = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,20 +72,26 @@ const Booking = ({ currentUser }) => {
     try {
       const payload = {
         service_id: form.service_id,
+        service_name: form.service_name || null, // optional field
         start_date: form.start_date,
         end_date: form.end_date,
-        customer: form.customer, // 🆕 include customer field
+        customer: form.customer, // ✅ include customer name
       };
 
-      const res = await axios.post("https://manpower.cmti.online/bookings/", payload, {
-        params: { assigned_by: currentUser?.username || "system" },
-      });
+      const res = await axios.post(
+        "https://manpower.cmti.online/bookings/",
+        payload,
+        {
+          params: { assigned_by: currentUser?.username || "system" },
+        }
+      );
 
       setMessage({
         type: "success",
         text: res.data.message || "✅ Booking confirmed!",
       });
 
+      // Reset form
       setForm({
         service_id: "",
         service_name: "",
@@ -126,7 +140,9 @@ const Booking = ({ currentUser }) => {
 
           {/* Service ID */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Service ID</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Service ID
+            </label>
             <input
               type="text"
               name="service_id"
@@ -140,7 +156,9 @@ const Booking = ({ currentUser }) => {
 
           {/* Service Name (optional) */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Service Name</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Service Name
+            </label>
             <input
               type="text"
               name="service_name"
