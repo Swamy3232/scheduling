@@ -72,13 +72,15 @@ const Booking = ({ currentUser }) => {
     setMessage(null);
 
     try {
+     // Just send form.start_date as-is
       const payload = {
-      service_id: form.service_id,
-      service_name: form.service_name || null,
-      start_date: new Date(form.start_date).toISOString(),
-      end_date: new Date(form.end_date).toISOString(),
-      customer: form.customer,
-    };
+        service_id: form.service_id,
+        service_name: form.service_name || null,
+        start_date: form.start_date, // do NOT use new Date().toISOString()
+        end_date: form.end_date,
+        customer: form.customer,
+};
+
 
 
       const res = await axios.post(
