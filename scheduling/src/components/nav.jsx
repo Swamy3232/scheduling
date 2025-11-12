@@ -40,6 +40,7 @@ const Navbar = () => {
     { name: "Service", path: "/service", roles: ["admin"] },
     { name: "Manpower", path: "/manpower", roles: ["admin"] },
     { name: "Job Assignment", path: "/slot", roles: ["admin", "worker"] },
+    { name: "report", path: "/report", roles: ["admin"] },
   ];
 
   const filteredNavItems = navItems.filter((item) =>
