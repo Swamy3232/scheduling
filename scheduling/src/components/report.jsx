@@ -9,7 +9,12 @@ export default function Report() {
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
 
-  // Fetch all bookings
+  const [showModal, setShowModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [rate, setRate] = useState("");
+  const [totalPrice, setTotalPrice] = useState(null);
+
+  // Fetch bookings
   const fetchBookings = async () => {
     try {
       const res = await axios.get(API_URL);
@@ -24,23 +29,72 @@ export default function Report() {
     fetchBookings();
   }, []);
 
-  // Filter by category and department
+  // Filter by category/department
   useEffect(() => {
     let filtered = bookings;
-    if (category) filtered = filtered.filter(b => b.category === category);
-    if (department) filtered = filtered.filter(b => b.department === department);
+    if (category) filtered = filtered.filter((b) => b.category === category);
+    if (department) filtered = filtered.filter((b) => b.department === department);
     setFilteredBookings(filtered);
   }, [category, department, bookings]);
 
-  // Unique categories and departments for dropdowns
-  const uniqueCategories = [...new Set(bookings.map(b => b.category).filter(Boolean))];
-  const uniqueDepartments = [...new Set(bookings.map(b => b.department).filter(Boolean))];
+  const uniqueCategories = [...new Set(bookings.map((b) => b.category).filter(Boolean))];
+  const uniqueDepartments = [...new Set(bookings.map((b) => b.department).filter(Boolean))];
+
+  // Handle Price Check click
+  const openPriceCheck = (booking) => {
+    setSelectedBooking(booking);
+    setRate("");
+    setTotalPrice(null);
+    setShowModal(true);
+  };
+
+  // Calculate price
+  const calculatePrice = () => {
+    if (!rate || isNaN(rate)) return;
+    const start = new Date(selectedBooking.start_date);
+    const end = new Date(selectedBooking.end_date);
+    const hours = Math.abs(end - start) / 36e5; // milliseconds to hours
+    const total = (hours * parseFloat(rate)).toFixed(2);
+    setTotalPrice(total);
+  };
+
+  // Print report
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Price Report</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h2 { color: #2563eb; }
+            table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+            td, th { border: 1px solid #ddd; padding: 8px; }
+          </style>
+        </head>
+        <body>
+          <h2>Booking Price Report</h2>
+          <p><b>Service:</b> ${selectedBooking.service_name}</p>
+          <p><b>Manpower:</b> ${selectedBooking.name}</p>
+          <p><b>Category:</b> ${selectedBooking.category}</p>
+          <p><b>Department:</b> ${selectedBooking.department}</p>
+          <p><b>Start:</b> ${new Date(selectedBooking.start_date).toLocaleString()}</p>
+          <p><b>End:</b> ${new Date(selectedBooking.end_date).toLocaleString()}</p>
+          <hr/>
+          <p><b>Rate (₹/hr):</b> ${rate}</p>
+          <p><b>Total Price (₹):</b> ${totalPrice}</p>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-semibold text-gray-800 mb-6">📋 Booking Report</h1>
 
-      {/* Filter Section */}
+      {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -51,7 +105,7 @@ export default function Report() {
           >
             <option value="">All Categories</option>
             {uniqueCategories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat}>{cat}</option>
             ))}
           </select>
         </div>
@@ -65,14 +119,17 @@ export default function Report() {
           >
             <option value="">All Departments</option>
             {uniqueDepartments.map((dept) => (
-              <option key={dept} value={dept}>{dept}</option>
+              <option key={dept}>{dept}</option>
             ))}
           </select>
         </div>
 
         <div className="flex items-end">
           <button
-            onClick={() => { setCategory(""); setDepartment(""); }}
+            onClick={() => {
+              setCategory("");
+              setDepartment("");
+            }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
           >
             Reset Filters
@@ -80,19 +137,20 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Table Section */}
+      {/* Table */}
       <div className="overflow-x-auto bg-white shadow-md rounded-lg">
         <table className="min-w-full border-collapse">
           <thead>
             <tr className="bg-gray-200 text-left text-sm text-gray-700">
               <th className="p-3 border">Booking ID</th>
               <th className="p-3 border">Service Name</th>
-              <th className="p-3 border">Manpower Name</th>
+              <th className="p-3 border">Manpower</th>
               <th className="p-3 border">Category</th>
               <th className="p-3 border">Department</th>
-              <th className="p-3 border">Start Date</th>
-              <th className="p-3 border">End Date</th>
+              <th className="p-3 border">Start</th>
+              <th className="p-3 border">End</th>
               <th className="p-3 border">Assigned By</th>
+              <th className="p-3 border">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -107,11 +165,19 @@ export default function Report() {
                   <td className="p-3 border">{new Date(b.start_date).toLocaleString()}</td>
                   <td className="p-3 border">{new Date(b.end_date).toLocaleString()}</td>
                   <td className="p-3 border">{b.assigned_by}</td>
+                  <td className="p-3 border">
+                    <button
+                      onClick={() => openPriceCheck(b)}
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                    >
+                      💰 Price Check
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center p-4 text-gray-500">
+                <td colSpan="9" className="text-center p-4 text-gray-500">
                   No bookings found.
                 </td>
               </tr>
@@ -119,6 +185,49 @@ export default function Report() {
           </tbody>
         </table>
       </div>
+
+      {/* Price Check Modal */}
+      {showModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+            <h2 className="text-lg font-semibold mb-3 text-blue-700">
+              💰 Price Check - {selectedBooking.service_name}
+            </h2>
+            <label className="block text-sm mb-1">Enter Rate (₹/hour)</label>
+            <input
+              type="number"
+              className="border p-2 rounded w-full mb-3"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              placeholder="Enter amount"
+            />
+            <button
+              onClick={calculatePrice}
+              className="bg-blue-600 text-white px-4 py-2 rounded mr-2 hover:bg-blue-700"
+            >
+              Calculate
+            </button>
+            <button
+              onClick={() => setShowModal(false)}
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+            >
+              Close
+            </button>
+
+            {totalPrice && (
+              <div className="mt-4 text-gray-800">
+                <p><b>Total Price:</b> ₹{totalPrice}</p>
+                <button
+                  onClick={handlePrint}
+                  className="mt-2 bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                >
+                  🖨️ Print
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
