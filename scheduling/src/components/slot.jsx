@@ -64,7 +64,6 @@ export default function ProfessionalBookingForm() {
 
     if (now > end) return "completed";
     if (now >= start && now <= end) return "in-progress";
-    if (now < start) return "upcoming";
     return "upcoming";
   };
 
@@ -97,15 +96,9 @@ export default function ProfessionalBookingForm() {
             In Progress
           </span>
         );
-      case "upcoming":
-        return (
-          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-            Scheduled
-          </span>
-        );
       default:
         return (
-          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
             Scheduled
           </span>
         );
@@ -167,8 +160,8 @@ export default function ProfessionalBookingForm() {
       setLoading(true);
       const payload = {
         service_id: Number(selectedService),
-        start_date: startDate,
-        end_date: endDate,
+        start_date: new Date(startDate).toISOString(),
+        end_date: new Date(endDate).toISOString(),
         category,
         department,
       };
@@ -210,8 +203,8 @@ export default function ProfessionalBookingForm() {
     try {
       setLoading(true);
       const payload = {
-        start_date: startDate,
-        end_date: endDate,
+        start_date: new Date(startDate).toISOString(),
+        end_date: new Date(endDate).toISOString(),
         category,
         department,
       };
@@ -267,7 +260,7 @@ export default function ProfessionalBookingForm() {
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           {editId ? `✏️ Edit Booking #${editId}` : "➕ Create New Booking"}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
@@ -430,10 +423,7 @@ export default function ProfessionalBookingForm() {
             ))}
             {filteredBookings.length === 0 && (
               <tr>
-                <td
-                  colSpan={10}
-                  className="px-6 py-4 text-center text-gray-500 text-sm"
-                >
+                <td colSpan={10} className="px-6 py-4 text-center text-gray-500 text-sm">
                   No bookings found
                 </td>
               </tr>
