@@ -57,6 +57,17 @@ export default function ProfessionalBookingForm() {
     return dt.toLocaleString("en-IN", { hour12: false });
   };
 
+  const toLocalInputDateTime = (isoString) => {
+    const dt = new Date(isoString);
+    const tzOffset = dt.getTimezoneOffset() * 60000; // in ms
+    return new Date(dt - tzOffset).toISOString().slice(0, 16);
+  };
+
+  const toUTCDateTimeString = (localDateTime) => {
+    const dt = new Date(localDateTime);
+    return dt.toISOString(); // sends UTC string to backend
+  };
+
   const getBookingStatus = (booking) => {
     const now = new Date();
     const start = new Date(booking.start_date);
@@ -160,8 +171,8 @@ export default function ProfessionalBookingForm() {
       setLoading(true);
       const payload = {
         service_id: Number(selectedService),
-        start_date: new Date(startDate).toISOString(),
-        end_date: new Date(endDate).toISOString(),
+        start_date: toUTCDateTimeString(startDate),
+        end_date: toUTCDateTimeString(endDate),
         category,
         department,
       };
@@ -190,8 +201,8 @@ export default function ProfessionalBookingForm() {
     setSelectedService(
       services.find((s) => s.service_name === b.service_name)?.service_id || ""
     );
-    setStartDate(new Date(b.start_date).toISOString().slice(0, 16));
-    setEndDate(new Date(b.end_date).toISOString().slice(0, 16));
+    setStartDate(toLocalInputDateTime(b.start_date));
+    setEndDate(toLocalInputDateTime(b.end_date));
     setCategory(b.category || "");
     setDepartment(b.department || "");
     setMessage(`✏️ Editing booking #${b.booking_id}`);
@@ -203,8 +214,8 @@ export default function ProfessionalBookingForm() {
     try {
       setLoading(true);
       const payload = {
-        start_date: new Date(startDate).toISOString(),
-        end_date: new Date(endDate).toISOString(),
+        start_date: toUTCDateTimeString(startDate),
+        end_date: toUTCDateTimeString(endDate),
         category,
         department,
       };
