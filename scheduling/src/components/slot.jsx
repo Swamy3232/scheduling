@@ -37,6 +37,14 @@ export default function ProfessionalBookingForm() {
   const fetchBookings = async () => {
     try {
       const res = await axios.get(`${API_URL}/bookings/`);
+      console.log("📦 Raw bookings data from backend:", res.data);
+
+      // Log one sample to inspect date format
+      if (res.data.length > 0) {
+        console.log("🕓 Example start_date from backend:", res.data[0].start_date);
+        console.log("🕓 Example end_date from backend:", res.data[0].end_date);
+      }
+
       setBookings(res.data);
       setFilteredBookings(res.data);
     } catch (err) {
@@ -52,20 +60,23 @@ export default function ProfessionalBookingForm() {
 
   // -----------------------------
   // Helpers
-const formatLocalDateTime = (isoString) => {
-  // Detect if backend time already includes offset or not
-  if (!isoString) return "-";
-  
-  // If backend is storing in UTC (with 'Z'), just show local
-  if (isoString.endsWith("Z")) {
-    const dt = new Date(isoString);
-    return dt.toLocaleString("en-IN", { hour12: false });
-  }
 
-  // If backend stores local time (no 'Z'), don't reapply offset
-  return isoString.replace("T", " ").slice(0, 16);
-};
+  // ✅ FIXED TIME DISPLAY FUNCTION
+  const formatLocalDateTime = (isoString) => {
+    if (!isoString) return "-";
+    console.log("⏰ Raw date string:", isoString);
 
+    // Detect if backend sends UTC (has 'Z' or timezone offset)
+    if (isoString.endsWith("Z") || isoString.includes("+") || isoString.includes("-")) {
+      const dt = new Date(isoString);
+      console.log("🌐 Detected UTC — converting to local (IST):", dt.toString());
+      return dt.toLocaleString("en-IN", { hour12: false });
+    }
+
+    // If backend sends plain local string without timezone info
+    console.log("⚙️ Detected local format — showing directly");
+    return isoString.replace("T", " ").slice(0, 16);
+  };
 
   const toLocalInputDateTime = (isoString) => {
     const dt = new Date(isoString);
@@ -187,6 +198,8 @@ const formatLocalDateTime = (isoString) => {
         department,
       };
 
+      console.log("📤 Sending booking payload:", payload);
+
       const res = await axios.post(`${API_URL}/bookings/`, payload);
       setMessage(`✅ Booking created for "${res.data.service_name}"`);
       fetchBookings();
@@ -229,6 +242,8 @@ const formatLocalDateTime = (isoString) => {
         category,
         department,
       };
+
+      console.log("📤 Updating booking payload:", payload);
 
       await axios.put(`${API_URL}/bookings/${editId}`, payload);
       setMessage("✅ Booking updated successfully");
@@ -454,4 +469,4 @@ const formatLocalDateTime = (isoString) => {
       </div>
     </div>
   );
-} 
+}
