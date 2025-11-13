@@ -10,6 +10,7 @@ export default function ProfessionalBookingForm() {
   const [endDate, setEndDate] = useState("");
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
+  const [priceType, setPriceType] = useState(""); // ✅ NEW FIELD
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [message, setMessage] = useState("");
@@ -37,14 +38,6 @@ export default function ProfessionalBookingForm() {
   const fetchBookings = async () => {
     try {
       const res = await axios.get(`${API_URL}/bookings/`);
-      console.log("📦 Raw bookings data from backend:", res.data);
-
-      // Log one sample to inspect date format
-      if (res.data.length > 0) {
-        console.log("🕓 Example start_date from backend:", res.data[0].start_date);
-        console.log("🕓 Example end_date from backend:", res.data[0].end_date);
-      }
-
       setBookings(res.data);
       setFilteredBookings(res.data);
     } catch (err) {
@@ -59,34 +52,15 @@ export default function ProfessionalBookingForm() {
   }, []);
 
   // -----------------------------
-  // Helpers
-
-  // ✅ FIXED TIME DISPLAY FUNCTION
   const formatLocalDateTime = (isoString) => {
     if (!isoString) return "-";
-    console.log("⏰ Raw date string:", isoString);
-
-    // Detect if backend sends UTC (has 'Z' or timezone offset)
-    if (isoString.endsWith("Z") || isoString.includes("+") || isoString.includes("-")) {
-      const dt = new Date(isoString);
-      console.log("🌐 Detected UTC — converting to local (IST):", dt.toString());
-      return dt.toLocaleString("en-IN", { hour12: false });
-    }
-
-    // If backend sends plain local string without timezone info
-    console.log("⚙️ Detected local format — showing directly");
-    return isoString.replace("T", " ").slice(0, 16);
-  };
-
-  const toLocalInputDateTime = (isoString) => {
     const dt = new Date(isoString);
-    const tzOffset = dt.getTimezoneOffset() * 60000; // in ms
-    return new Date(dt - tzOffset).toISOString().slice(0, 16);
+    return dt.toLocaleString("en-IN", { hour12: false });
   };
 
   const toUTCDateTimeString = (localDateTime) => {
     const dt = new Date(localDateTime);
-    return dt.toISOString(); // sends UTC string to backend
+    return dt.toISOString();
   };
 
   const getBookingStatus = (booking) => {
@@ -101,20 +75,6 @@ export default function ProfessionalBookingForm() {
 
   const getStatusBadge = (booking) => {
     const status = getBookingStatus(booking);
-    if (!booking.manpower_name) {
-      if (status === "completed") {
-        return (
-          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
-            Expired (Unassigned)
-          </span>
-        );
-      }
-      return (
-        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-          Pending Assignment
-        </span>
-      );
-    }
     switch (status) {
       case "completed":
         return (
@@ -138,52 +98,9 @@ export default function ProfessionalBookingForm() {
   };
 
   // -----------------------------
-  // Filters
-  useEffect(() => {
-    let filtered = bookings;
-
-    if (serviceFilter) {
-      filtered = filtered.filter((b) =>
-        b.service_name.toLowerCase().includes(serviceFilter.toLowerCase())
-      );
-    }
-
-    if (dateFilter) {
-      const filterDate = new Date(dateFilter);
-      filtered = filtered.filter((b) => {
-        const bookingDate = new Date(b.start_date);
-        return bookingDate.toDateString() === filterDate.toDateString();
-      });
-    }
-
-    if (statusFilter) {
-      filtered = filtered.filter((b) => {
-        const status = getBookingStatus(b);
-        const hasManpower = !!b.manpower_name;
-        switch (statusFilter) {
-          case "assigned":
-            return hasManpower;
-          case "unassigned":
-            return !hasManpower;
-          case "completed":
-            return status === "completed";
-          case "in-progress":
-            return status === "in-progress";
-          case "upcoming":
-            return status === "upcoming";
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredBookings(filtered);
-  }, [bookings, serviceFilter, dateFilter, statusFilter]);
-
-  // -----------------------------
   // Create Booking
   const createBooking = async () => {
-    if (!selectedService || !startDate || !endDate || !category || !department) {
+    if (!selectedService || !startDate || !endDate || !category || !department || !priceType) {
       setMessage("⚠️ Please fill in all fields!");
       return;
     }
@@ -196,11 +113,12 @@ export default function ProfessionalBookingForm() {
         end_date: toUTCDateTimeString(endDate),
         category,
         department,
+        price_type: priceType, // ✅ Added
       };
 
       console.log("📤 Sending booking payload:", payload);
-
       const res = await axios.post(`${API_URL}/bookings/`, payload);
+
       setMessage(`✅ Booking created for "${res.data.service_name}"`);
       fetchBookings();
       resetForm();
@@ -212,22 +130,16 @@ export default function ProfessionalBookingForm() {
     }
   };
 
-  // -----------------------------
   const handleEdit = (b) => {
-    const status = getBookingStatus(b);
-    if (status === "completed" || status === "in-progress") {
-      setMessage("❌ Cannot edit completed or in-progress bookings");
-      return;
-    }
-
     setEditId(b.booking_id);
     setSelectedService(
       services.find((s) => s.service_name === b.service_name)?.service_id || ""
     );
-    setStartDate(toLocalInputDateTime(b.start_date));
-    setEndDate(toLocalInputDateTime(b.end_date));
+    setStartDate(b.start_date.slice(0, 16));
+    setEndDate(b.end_date.slice(0, 16));
     setCategory(b.category || "");
     setDepartment(b.department || "");
+    setPriceType(b.price_type || ""); // ✅ Load into edit form
     setMessage(`✏️ Editing booking #${b.booking_id}`);
   };
 
@@ -241,10 +153,10 @@ export default function ProfessionalBookingForm() {
         end_date: toUTCDateTimeString(endDate),
         category,
         department,
+        price_type: priceType, // ✅ Added
       };
 
       console.log("📤 Updating booking payload:", payload);
-
       await axios.put(`${API_URL}/bookings/${editId}`, payload);
       setMessage("✅ Booking updated successfully");
       fetchBookings();
@@ -275,13 +187,8 @@ export default function ProfessionalBookingForm() {
     setEndDate("");
     setCategory("");
     setDepartment("");
+    setPriceType(""); // ✅ Reset
     setEditId(null);
-  };
-
-  const clearFilters = () => {
-    setServiceFilter("");
-    setDateFilter("");
-    setStatusFilter("");
   };
 
   // -----------------------------
@@ -296,7 +203,9 @@ export default function ProfessionalBookingForm() {
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           {editId ? `✏️ Edit Booking #${editId}` : "➕ Create New Booking"}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+          {/* Service */}
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
@@ -311,6 +220,7 @@ export default function ProfessionalBookingForm() {
             ))}
           </select>
 
+          {/* Category */}
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -321,6 +231,7 @@ export default function ProfessionalBookingForm() {
             <option value="industrial">Industrial</option>
           </select>
 
+          {/* Department */}
           <select
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
@@ -331,6 +242,18 @@ export default function ProfessionalBookingForm() {
             <option value="b">Department B</option>
             <option value="c">Department C</option>
             <option value="d">Department D</option>
+          </select>
+
+          {/* ✅ Price Type */}
+          <select
+            value={priceType}
+            onChange={(e) => setPriceType(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2"
+          >
+            <option value="">Select Price Type</option>
+            <option value="academic">Academic</option>
+            <option value="industrial">Industrial</option>
+            <option value="other">Other</option>
           </select>
 
           <input
@@ -380,8 +303,6 @@ export default function ProfessionalBookingForm() {
             className={`mt-4 p-3 rounded-lg text-sm font-medium ${
               message.includes("❌")
                 ? "bg-red-100 text-red-800 border border-red-200"
-                : message.includes("⚠️")
-                ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                 : "bg-green-100 text-green-800 border border-green-200"
             }`}
           >
@@ -390,41 +311,36 @@ export default function ProfessionalBookingForm() {
         )}
       </div>
 
-      {/* Bookings Table */}
+      {/* Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Booking ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Service
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Department
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Price Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Manpower
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Start Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                End Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Assigned By
-              </th>
+              <th className="px-6 py-3">Start</th>
+              <th className="px-6 py-3">End</th>
+              <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3"></th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredBookings.map((b) => (
               <tr key={b.booking_id}>
@@ -432,15 +348,11 @@ export default function ProfessionalBookingForm() {
                 <td className="px-6 py-4 text-sm text-gray-700">{b.service_name}</td>
                 <td className="px-6 py-4 text-sm text-gray-700">{b.category || "-"}</td>
                 <td className="px-6 py-4 text-sm text-gray-700">{b.department || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-700">{b.price_type || "-"}</td>
                 <td className="px-6 py-4 text-sm text-gray-700">{b.manpower_name || "-"}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {formatLocalDateTime(b.start_date)}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {formatLocalDateTime(b.end_date)}
-                </td>
+                <td className="px-6 py-4 text-sm">{formatLocalDateTime(b.start_date)}</td>
+                <td className="px-6 py-4 text-sm">{formatLocalDateTime(b.end_date)}</td>
                 <td className="px-6 py-4">{getStatusBadge(b)}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">{b.assigned_by || "-"}</td>
                 <td className="px-6 py-4">
                   <button
                     onClick={() => handleEdit(b)}
@@ -459,7 +371,7 @@ export default function ProfessionalBookingForm() {
             ))}
             {filteredBookings.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-6 py-4 text-center text-gray-500 text-sm">
+                <td colSpan={10} className="px-6 py-4 text-center text-gray-500">
                   No bookings found
                 </td>
               </tr>
