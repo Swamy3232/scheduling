@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_URL = "https://manpower.cmti.online/bookings/";
+const BOOKING_API = "https://manpower.cmti.online/bookings/";
+const PRICE_API = "https://manpower.cmti.online/service_prices/";
 
 export default function Report() {
   const [bookings, setBookings] = useState([]);
@@ -17,7 +18,7 @@ export default function Report() {
   // Fetch bookings
   const fetchBookings = async () => {
     try {
-      const res = await axios.get(API_URL);
+      const res = await axios.get(BOOKING_API);
       setBookings(res.data);
       setFilteredBookings(res.data);
     } catch (err) {
@@ -29,7 +30,7 @@ export default function Report() {
     fetchBookings();
   }, []);
 
-  // Filter by category/department
+  // Filter bookings
   useEffect(() => {
     let filtered = bookings;
     if (category) filtered = filtered.filter((b) => b.category === category);
@@ -40,26 +41,51 @@ export default function Report() {
   const uniqueCategories = [...new Set(bookings.map((b) => b.category).filter(Boolean))];
   const uniqueDepartments = [...new Set(bookings.map((b) => b.department).filter(Boolean))];
 
-  // Handle Price Check click
-  const openPriceCheck = (booking) => {
+  // Fetch rate from API
+  const fetchRate = async (service_id, price_type) => {
+    try {
+      const res = await axios.get(PRICE_API);
+      const priceEntry = res.data.find(
+        (p) => p.service_id === service_id && p.price_type === price_type
+      );
+      return priceEntry ? priceEntry.rate : null;
+    } catch (err) {
+      console.error("Error fetching service prices:", err);
+      return null;
+    }
+  };
+
+  // Open Price Check modal
+  const openPriceCheck = async (booking) => {
     setSelectedBooking(booking);
-    setRate("");
     setTotalPrice(null);
+
+    const rateFromApi = await fetchRate(booking.service_id, booking.price_type);
+    if (rateFromApi !== null) {
+      setRate(rateFromApi);
+      calculatePrice(rateFromApi, booking);
+    } else {
+      setRate(""); // fallback if rate not found
+    }
+
     setShowModal(true);
   };
 
-  // Calculate price
-  const calculatePrice = () => {
-    if (!rate || isNaN(rate)) return;
-    const start = new Date(selectedBooking.start_date);
-    const end = new Date(selectedBooking.end_date);
+  // Calculate total price
+  const calculatePrice = (rateToUse = null, booking = selectedBooking) => {
+    const effectiveRate = rateToUse !== null ? parseFloat(rateToUse) : parseFloat(rate);
+    if (!effectiveRate || !booking) return;
+
+    const start = new Date(booking.start_date);
+    const end = new Date(booking.end_date);
     const hours = Math.abs(end - start) / 36e5; // milliseconds to hours
-    const total = (hours * parseFloat(rate)).toFixed(2);
+    const total = (hours * effectiveRate).toFixed(2);
     setTotalPrice(total);
   };
 
   // Print report
   const handlePrint = () => {
+    if (!selectedBooking) return;
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
@@ -81,6 +107,7 @@ export default function Report() {
           <p><b>Start:</b> ${new Date(selectedBooking.start_date).toLocaleString()}</p>
           <p><b>End:</b> ${new Date(selectedBooking.end_date).toLocaleString()}</p>
           <hr/>
+          <p><b>Price Type:</b> ${selectedBooking.price_type}</p>
           <p><b>Rate (₹/hr):</b> ${rate}</p>
           <p><b>Total Price (₹):</b> ${totalPrice}</p>
         </body>
@@ -193,16 +220,16 @@ export default function Report() {
             <h2 className="text-lg font-semibold mb-3 text-blue-700">
               💰 Price Check - {selectedBooking.service_name}
             </h2>
-            <label className="block text-sm mb-1">Enter Rate (₹/hour)</label>
+            <label className="block text-sm mb-1">Rate (₹/hour)</label>
             <input
               type="number"
               className="border p-2 rounded w-full mb-3"
               value={rate}
               onChange={(e) => setRate(e.target.value)}
-              placeholder="Enter amount"
+              placeholder="Enter rate (optional)"
             />
             <button
-              onClick={calculatePrice}
+              onClick={() => calculatePrice()}
               className="bg-blue-600 text-white px-4 py-2 rounded mr-2 hover:bg-blue-700"
             >
               Calculate
