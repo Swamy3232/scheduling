@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import logo from "../assets/logo.png"; // CMTI logo
+import path from "path";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -41,6 +42,7 @@ const Navbar = () => {
     { name: "Manpower", path: "/manpower", roles: ["admin"] },
     { name: "Job Assignment", path: "/slot", roles: ["admin", "worker"] },
     { name: "report", path: "/report", roles: ["admin"] },
+    { name: "serivecost",path: "/servicecost", roles: ["admin"] },
   ];
 
   const filteredNavItems = navItems.filter((item) =>

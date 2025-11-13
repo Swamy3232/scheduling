@@ -16,6 +16,7 @@ import Login from "./components/login";
 import Navbar from "./components/nav";
 import WorkerBookings from "./components/jobassigned";
 import Report from "./components/report";
+import ServicePricePage from "./components/servicecost";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -81,6 +82,7 @@ export default function App() {
                 <Route path="/manpower" element={<Manpower />} />
                 <Route path="/slot" element={<WorkerBookings />} />
                 <Route path="/report" element={<Report />} />
+                <Route path="/servicecost" element={<ServicePricePage />} />
                 <Route path="*" element={<Navigate to="/bookings" />} />
               </>
             )}
