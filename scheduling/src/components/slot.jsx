@@ -251,7 +251,7 @@ export default function ProfessionalBookingForm() {
           >
             <option value="">Select Price Type</option>
             <option value="per_hour">Per Hour</option>
-            <option value="per_slot">Per Day</option>
+            <option value="per_sample">Per Sample</option>
           </select>
 
           <input
