@@ -6,28 +6,29 @@ const API_URL = "https://manpower.cmti.online";
 export default function ProfessionalBookingForm() {
   const [services, setServices] = useState([]);
   const [manpowerList, setManpowerList] = useState([]);
-
-  const [selectedService, setSelectedService] = useState("");
-  const [selectedManpower, setSelectedManpower] = useState("");
-
   const [serviceManpower, setServiceManpower] = useState([]);
   const [freeManpower, setFreeManpower] = useState([]);
 
+  const [selectedService, setSelectedService] = useState("");
+  const [selectedManpower, setSelectedManpower] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
   const [priceType, setPriceType] = useState("");
 
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
-
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
 
   /* ---------------------------- Fetch Initial Data --------------------------- */
+  useEffect(() => {
+    fetchServices();
+    fetchBookings();
+    fetchManpower();
+  }, []);
 
   const fetchServices = async () => {
     try {
@@ -55,18 +56,11 @@ export default function ProfessionalBookingForm() {
       const res = await axios.get(`${API_URL}/api/manpower/`);
       setManpowerList(res.data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
-  useEffect(() => {
-    fetchServices();
-    fetchBookings();
-    fetchManpower();
-  }, []);
-
   /* ---------------------- When service changes → load manpower ---------------------- */
-
   useEffect(() => {
     if (!selectedService) {
       setServiceManpower([]);
@@ -76,10 +70,12 @@ export default function ProfessionalBookingForm() {
 
     const load = async () => {
       try {
-        const res = await axios.get(`${API_URL}/bookings/api/service_manpower/${selectedService}`);
+        const res = await axios.get(
+          `${API_URL}/bookings/api/service_manpower/${selectedService}`
+        );
         setServiceManpower(res.data);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
 
@@ -87,7 +83,6 @@ export default function ProfessionalBookingForm() {
   }, [selectedService]);
 
   /* ------------------ Check FREE manpower when date or service changes ------------------ */
-
   useEffect(() => {
     if (!selectedService || !startDate || !endDate) {
       setFreeManpower([]);
@@ -98,14 +93,14 @@ export default function ProfessionalBookingForm() {
       try {
         const res = await axios.get(`${API_URL}/bookings/free_manpower`, {
           params: {
-            start_date: startDate,
-            end_date: endDate,
-            service_id: selectedService,
+            start_date: toUTC(startDate),
+            end_date: toUTC(endDate),
+            service_id: Number(selectedService),
           },
         });
         setFreeManpower(res.data.free);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
 
@@ -113,8 +108,14 @@ export default function ProfessionalBookingForm() {
   }, [selectedService, startDate, endDate]);
 
   /* ------------------------------ Helper Functions ------------------------------ */
+  const toUTC = (v) => {
+    if (!v) return null;
+    const d = new Date(v);
+    return d.toISOString();
+  };
 
   const toLocalInputFormat = (isoString) => {
+    if (!isoString) return "";
     const d = new Date(isoString);
     const pad = (n) => (n < 10 ? "0" + n : n);
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
@@ -124,17 +125,15 @@ export default function ProfessionalBookingForm() {
 
   const formatLocalDateTime = (isoString) => {
     if (!isoString) return "-";
-    return new Date(isoString).toLocaleString("en-IN", { 
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false 
+    return new Date(isoString).toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
   };
-
-  const toUTC = (v) => new Date(v).toISOString();
 
   const getStatusBadge = (b) => {
     const now = new Date();
@@ -142,13 +141,37 @@ export default function ProfessionalBookingForm() {
     const e = new Date(b.end_date);
 
     if (now > e)
-      return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">Completed</span>;
+      return (
+        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">
+          Completed
+        </span>
+      );
     if (now >= s && now <= e)
-      return <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">In Progress</span>;
-    return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">Scheduled</span>;
+      return (
+        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+          In Progress
+        </span>
+      );
+    return (
+      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+        Scheduled
+      </span>
+    );
   };
 
-  /* ------------------------------ Create Booking ------------------------------ */
+  /* ------------------------------ Form Actions ------------------------------ */
+  const resetForm = () => {
+    setSelectedService("");
+    setSelectedManpower("");
+    setStartDate("");
+    setEndDate("");
+    setCategory("");
+    setDepartment("");
+    setPriceType("");
+    setEditId(null);
+    setFreeManpower([]);
+    setMessage("");
+  };
 
   const createBooking = async () => {
     if (!selectedService || !selectedManpower || !startDate || !endDate) {
@@ -179,14 +202,12 @@ export default function ProfessionalBookingForm() {
       fetchBookings();
       resetForm();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setMessage("❌ Error creating booking");
     } finally {
       setLoading(false);
     }
   };
-
-  /* ------------------------------ Edit Booking ------------------------------ */
 
   const handleEdit = (b) => {
     setEditId(b.booking_id);
@@ -216,23 +237,20 @@ export default function ProfessionalBookingForm() {
         category,
         department,
         price_type: priceType,
-        manpower_id: selectedManpower,
+        manpower_id: Number(selectedManpower),
       };
 
       await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
-
       setMessage("✅ Booking updated successfully");
       fetchBookings();
       resetForm();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setMessage("❌ Error updating booking");
     } finally {
       setLoading(false);
     }
   };
-
-  /* ------------------------------ Delete Booking ------------------------------ */
 
   const deleteBooking = async (id) => {
     if (!window.confirm("Are you sure you want to delete this booking?")) return;
@@ -241,47 +259,28 @@ export default function ProfessionalBookingForm() {
       setMessage("✅ Booking deleted successfully");
       fetchBookings();
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setMessage("❌ Error deleting booking");
     }
   };
 
-  const resetForm = () => {
-    setSelectedService("");
-    setSelectedManpower("");
-    setStartDate("");
-    setEndDate("");
-    setCategory("");
-    setDepartment("");
-    setPriceType("");
-    setEditId(null);
-    setFreeManpower([]);
-    setMessage("");
-  };
-
   /* ------------------------------ UI Rendering ------------------------------ */
-
   return (
     <div className="w-full max-w-7xl mx-auto bg-white shadow-lg rounded-lg p-6 mt-6">
-
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Service Booking Management</h1>
         <p className="text-gray-600">Schedule and manage service appointments</p>
       </div>
 
-      {/* Booking Form */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8">
         <h2 className="text-lg font-semibold text-gray-700 mb-4">
           {editId ? "Edit Booking" : "Create New Booking"}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Service Selection */}
+          {/* Service */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Service *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Service *</label>
             <select
               value={selectedService}
               onChange={(e) => setSelectedService(e.target.value)}
@@ -296,11 +295,9 @@ export default function ProfessionalBookingForm() {
             </select>
           </div>
 
-          {/* Resource Selection */}
+          {/* Resource */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Resource *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Resource *</label>
             <select
               value={selectedManpower}
               onChange={(e) => setSelectedManpower(e.target.value)}
@@ -310,7 +307,7 @@ export default function ProfessionalBookingForm() {
               <option value="">{selectedService ? "Select Resource" : "Select service first"}</option>
               {serviceManpower.map((mp) => (
                 <option key={mp.manpower_id} value={mp.manpower_id}>
-                  {mp.manpower_name}
+                  {mp.name}
                 </option>
               ))}
             </select>
@@ -318,9 +315,7 @@ export default function ProfessionalBookingForm() {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -334,9 +329,7 @@ export default function ProfessionalBookingForm() {
 
           {/* Department */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
@@ -356,12 +349,10 @@ export default function ProfessionalBookingForm() {
           </div>
         </div>
 
+        {/* Price and Dates */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Price Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pricing Type
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Type</label>
             <select
               value={priceType}
               onChange={(e) => setPriceType(e.target.value)}
@@ -373,11 +364,8 @@ export default function ProfessionalBookingForm() {
             </select>
           </div>
 
-          {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date & Time *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date & Time *</label>
             <input
               type="datetime-local"
               value={startDate}
@@ -386,11 +374,8 @@ export default function ProfessionalBookingForm() {
             />
           </div>
 
-          {/* End Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date & Time *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date & Time *</label>
             <input
               type="datetime-local"
               value={endDate}
@@ -399,30 +384,6 @@ export default function ProfessionalBookingForm() {
             />
           </div>
         </div>
-
-        {/* Availability Info */}
-        {freeManpower.length > 0 && (
-          <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
-            <div className="flex items-center text-green-800">
-              <span className="text-lg mr-2">✓</span>
-              <span className="font-medium">Available Resources:</span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {freeManpower.map((m) => (
-                <span 
-                  key={m.manpower_id}
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    m.manpower_id === Number(selectedManpower)
-                      ? "bg-green-500 text-white"
-                      : "bg-green-100 text-green-800"
-                  }`}
-                >
-                  {m.manpower_name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div className="flex gap-3">
@@ -435,7 +396,7 @@ export default function ProfessionalBookingForm() {
               >
                 {loading ? "Updating..." : "Update Booking"}
               </button>
-              <button 
+              <button
                 onClick={resetForm}
                 className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition duration-200"
               >
@@ -453,7 +414,7 @@ export default function ProfessionalBookingForm() {
           )}
         </div>
 
-        {/* Message Display */}
+        {/* Message */}
         {message && (
           <div
             className={`mt-4 p-3 rounded-lg text-sm font-medium ${
@@ -469,12 +430,12 @@ export default function ProfessionalBookingForm() {
         )}
       </div>
 
-      {/* Bookings Table */}
+      {/* Booking Table */}
       <div className="border border-gray-200 rounded-xl overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-700">Booking History</h2>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-gray-100">
@@ -500,39 +461,30 @@ export default function ProfessionalBookingForm() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.manpower_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">{b.category}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.department}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {b.price_type === 'per_hour' ? 'Per Hour' : 'Per Sample'}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.price_type === "per_hour" ? "Per Hour" : "Per Sample"}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.start_date)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.end_date)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(b)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleEdit(b)}
-                        className="text-blue-600 hover:text-blue-900 transition duration-200"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => deleteBooking(b.booking_id)}
-                        className="text-red-600 hover:text-red-900 transition duration-200"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap flex gap-2">
+                    <button
+                      onClick={() => handleEdit(b)}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteBooking(b.booking_id)}
+                      className="text-red-600 hover:text-red-800 font-medium text-sm"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
-
               {filteredBookings.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <span className="text-lg mb-2">📅</span>
-                      <p>No bookings found</p>
-                      <p className="text-sm text-gray-400 mt-1">Create your first booking to get started</p>
-                    </div>
+                  <td colSpan="10" className="text-center py-4 text-gray-500">
+                    No bookings found
                   </td>
                 </tr>
               )}
