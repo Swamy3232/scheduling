@@ -82,33 +82,36 @@ export default function ProfessionalBookingForm() {
   };
 
   const createBooking = async () => {
-    if (!selectedService || !startDate || !endDate || !category || !department || !priceType) {
-      setMessage("⚠️ Please fill in all fields");
-      return;
-    }
+  if (!selectedService || !startDate || !endDate || !category || !department || !priceType) {
+    setMessage("⚠️ Please fill in all fields");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const payload = {
-        service_id: Number(selectedService),
-        start_date: toUTC(startDate),
-        end_date: toUTC(endDate),
-        category,
-        department,
-        price_type: priceType,
-      };
+    const payload = {
+      service_id: Number(selectedService),
+      start_date: toUTC(startDate),
+      end_date: toUTC(endDate),
+      category,
+      department,
+      price_type: priceType,
+    };
 
-      await axios.post(`${API_URL}/bookings/`, payload);
-      setMessage("✅ Booking created successfully");
-      fetchBookings();
-      resetForm();
-    } catch (err) {
-      setMessage("❌ Error creating booking");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Note the query param `assigned_by=system`
+    const res = await axios.post(`${API_URL}/bookings/?assigned_by=system`, payload);
+
+    setMessage("✅ Booking created successfully");
+    fetchBookings();
+    resetForm();
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    setMessage("❌ Error creating booking");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (b) => {
     setEditId(b.booking_id);
