@@ -10,8 +10,8 @@ export default function ProfessionalBookingForm() {
   const [selectedService, setSelectedService] = useState("");
   const [selectedManpower, setSelectedManpower] = useState("");
 
-  const [serviceManpower, setServiceManpower] = useState([]); // manpower assigned to selected service
-  const [freeManpower, setFreeManpower] = useState([]); // free manpower for selected slot
+  const [serviceManpower, setServiceManpower] = useState([]);
+  const [freeManpower, setFreeManpower] = useState([]);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -70,15 +70,14 @@ export default function ProfessionalBookingForm() {
   useEffect(() => {
     if (!selectedService) {
       setServiceManpower([]);
+      setSelectedManpower("");
       return;
     }
 
-    // Fetch manpower linked to selected service
     const load = async () => {
       try {
         const res = await axios.get(`${API_URL}/bookings/api/service_manpower/${selectedService}`);
-
-        setServiceManpower(res.data); // [{ manpower_id, manpower_name }]
+        setServiceManpower(res.data);
       } catch (err) {
         console.log(err);
       }
@@ -98,14 +97,13 @@ export default function ProfessionalBookingForm() {
     const checkAvailability = async () => {
       try {
         const res = await axios.get(`${API_URL}/bookings/free_manpower`, {
-        params: {
-          start_date: startDate,   // ISO string
-          end_date: endDate,       // ISO string
-          service_id: selectedService, // optional
-        },
-      });
-
-        setFreeManpower(res.data.free); // array of free manpower
+          params: {
+            start_date: startDate,
+            end_date: endDate,
+            service_id: selectedService,
+          },
+        });
+        setFreeManpower(res.data.free);
       } catch (err) {
         console.log(err);
       }
@@ -126,7 +124,14 @@ export default function ProfessionalBookingForm() {
 
   const formatLocalDateTime = (isoString) => {
     if (!isoString) return "-";
-    return new Date(isoString).toLocaleString("en-IN", { hour12: false });
+    return new Date(isoString).toLocaleString("en-IN", { 
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false 
+    });
   };
 
   const toUTC = (v) => new Date(v).toISOString();
@@ -137,23 +142,22 @@ export default function ProfessionalBookingForm() {
     const e = new Date(b.end_date);
 
     if (now > e)
-      return <span className="bg-purple-200 px-2 py-1 rounded text-xs">Completed</span>;
+      return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">Completed</span>;
     if (now >= s && now <= e)
-      return <span className="bg-green-200 px-2 py-1 rounded text-xs">In Progress</span>;
-    return <span className="bg-blue-200 px-2 py-1 rounded text-xs">Scheduled</span>;
+      return <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">In Progress</span>;
+    return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">Scheduled</span>;
   };
 
   /* ------------------------------ Create Booking ------------------------------ */
 
   const createBooking = async () => {
     if (!selectedService || !selectedManpower || !startDate || !endDate) {
-      setMessage("⚠️ Please fill all fields");
+      setMessage("⚠️ Please fill all required fields");
       return;
     }
 
-    // Check if selected manpower is free
     if (!freeManpower.some((m) => m.manpower_id === Number(selectedManpower))) {
-      setMessage("❌ Selected manpower is not free in this time slot");
+      setMessage("❌ Selected resource is not available in this time slot");
       return;
     }
 
@@ -231,10 +235,10 @@ export default function ProfessionalBookingForm() {
   /* ------------------------------ Delete Booking ------------------------------ */
 
   const deleteBooking = async (id) => {
-    if (!window.confirm("Delete this booking?")) return;
+    if (!window.confirm("Are you sure you want to delete this booking?")) return;
     try {
       await axios.delete(`${API_URL}/bookings/${id}`);
-      setMessage("✅ Booking deleted");
+      setMessage("✅ Booking deleted successfully");
       fetchBookings();
     } catch (err) {
       console.log(err);
@@ -252,125 +256,189 @@ export default function ProfessionalBookingForm() {
     setPriceType("");
     setEditId(null);
     setFreeManpower([]);
+    setMessage("");
   };
 
   /* ------------------------------ UI Rendering ------------------------------ */
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 mt-6">
+    <div className="w-full max-w-7xl mx-auto bg-white shadow-lg rounded-lg p-6 mt-6">
 
-      {/* -------------------- Form -------------------- */}
-      <h2 className="text-2xl font-bold mb-4">📅 Service Booking</h2>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Service Booking Management</h1>
+        <p className="text-gray-600">Schedule and manage service appointments</p>
+      </div>
 
-      <div className="bg-blue-50 p-6 rounded-lg mb-6">
+      {/* Booking Form */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          {editId ? "Edit Booking" : "Create New Booking"}
+        </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Service Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Service *
+            </label>
+            <select
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Service</option>
+              {services.map((s) => (
+                <option key={s.service_id} value={s.service_id}>
+                  {s.service_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {/* Select Service */}
-          <select
-            value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Service</option>
-            {services.map((s) => (
-              <option key={s.service_id} value={s.service_id}>
-                {s.service_name}
-              </option>
-            ))}
-          </select>
+          {/* Resource Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Resource *
+            </label>
+            <select
+              value={selectedManpower}
+              onChange={(e) => setSelectedManpower(e.target.value)}
+              disabled={!selectedService}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">{selectedService ? "Select Resource" : "Select service first"}</option>
+              {serviceManpower.map((mp) => (
+                <option key={mp.manpower_id} value={mp.manpower_id}>
+                  {mp.manpower_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {/* Manpower Dropdown */}
-          <select
-            value={selectedManpower}
-            onChange={(e) => setSelectedManpower(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Manpower</option>
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Category</option>
+              <option value="academic">Academic</option>
+              <option value="industrial">Industrial</option>
+            </select>
+          </div>
 
-            {/* Only manpower linked to selected service */}
-            {serviceManpower.map((mp) => (
-              <option key={mp.manpower_id} value={mp.manpower_id}>
-                {mp.manpower_name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Category</option>
-            <option value="academic">Academic</option>
-            <option value="industrial">Industrial</option>
-          </select>
-
-          <select
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Department</option>
-            <option value="SMPM">SMPM</option>
-            <option value="CMF">CMF</option>
-            <option value="MNTM">MNTM</option>
-            <option value="ASMP">ASMP</option>
-            <option value="AEAMT">AEAMT</option>
-            <option value="SVT">SVT</option>
-            <option value="PDE">PDE</option>
-            <option value="PAT">PAT</option>
-            <option value="OTHER">OTHER</option>
-          </select>
-
-          <select
-            value={priceType}
-            onChange={(e) => setPriceType(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Price Type</option>
-            <option value="per_hour">Per Hour</option>
-            <option value="per_sample">Per Sample</option>
-          </select>
-
-          <input
-            type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          />
-
-          <input
-            type="datetime-local"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          />
+          {/* Department */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Department
+            </label>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Department</option>
+              <option value="SMPM">SMPM</option>
+              <option value="CMF">CMF</option>
+              <option value="MNTM">MNTM</option>
+              <option value="ASMP">ASMP</option>
+              <option value="AEAMT">AEAMT</option>
+              <option value="SVT">SVT</option>
+              <option value="PDE">PDE</option>
+              <option value="PAT">PAT</option>
+              <option value="OTHER">OTHER</option>
+            </select>
+          </div>
         </div>
 
-        {/* Free manpower list */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Price Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Pricing Type
+            </label>
+            <select
+              value={priceType}
+              onChange={(e) => setPriceType(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Pricing</option>
+              <option value="per_hour">Per Hour</option>
+              <option value="per_sample">Per Sample</option>
+            </select>
+          </div>
+
+          {/* Start Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Start Date & Time *
+            </label>
+            <input
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              End Date & Time *
+            </label>
+            <input
+              type="datetime-local"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Availability Info */}
         {freeManpower.length > 0 && (
-          <div className="bg-green-50 border border-green-300 p-3 rounded mb-4 text-sm">
-            <strong>Free manpower for this slot:</strong><br />
-            {freeManpower.map((m) => (
-              <span key={m.manpower_id} className="mr-2 px-2 py-1 bg-green-200 rounded">
-                {m.manpower_name}
-              </span>
-            ))}
+          <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+            <div className="flex items-center text-green-800">
+              <span className="text-lg mr-2">✓</span>
+              <span className="font-medium">Available Resources:</span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {freeManpower.map((m) => (
+                <span 
+                  key={m.manpower_id}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    m.manpower_id === Number(selectedManpower)
+                      ? "bg-green-500 text-white"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  {m.manpower_name}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="flex gap-2">
+        {/* Action Buttons */}
+        <div className="flex gap-3">
           {editId ? (
             <>
               <button
                 onClick={updateBooking}
                 disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex-1"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Updating..." : "💾 Update Booking"}
+                {loading ? "Updating..." : "Update Booking"}
               </button>
-              <button onClick={resetForm} className="px-4 py-2 border rounded-lg">
+              <button 
+                onClick={resetForm}
+                className="px-6 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition duration-200"
+              >
                 Cancel
               </button>
             </>
@@ -378,19 +446,22 @@ export default function ProfessionalBookingForm() {
             <button
               onClick={createBooking}
               disabled={loading}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating..." : "📝 Create Booking"}
+              {loading ? "Creating..." : "Create Booking"}
             </button>
           )}
         </div>
 
+        {/* Message Display */}
         {message && (
           <div
-            className={`mt-4 p-3 rounded-lg text-sm ${
+            className={`mt-4 p-3 rounded-lg text-sm font-medium ${
               message.includes("❌")
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
+                ? "bg-red-50 text-red-700 border border-red-200"
+                : message.includes("⚠️")
+                ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+                : "bg-green-50 text-green-700 border border-green-200"
             }`}
           >
             {message}
@@ -398,56 +469,76 @@ export default function ProfessionalBookingForm() {
         )}
       </div>
 
-      {/* -------------------- Bookings Table -------------------- */}
-      <div className="border rounded-lg">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2">Booking ID</th>
-              <th className="px-4 py-2">Service</th>
-              <th className="px-4 py-2">Manpower</th>
-              <th className="px-4 py-2">Category</th>
-              <th className="px-4 py-2">Department</th>
-              <th className="px-4 py-2">Price Type</th>
-              <th className="px-4 py-2">Start</th>
-              <th className="px-4 py-2">End</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredBookings.map((b) => (
-              <tr key={b.booking_id} className="border-b">
-                <td className="px-4 py-2">#{b.booking_id}</td>
-                <td className="px-4 py-2">{b.service_name}</td>
-                <td className="px-4 py-2">{b.manpower_name}</td>
-                <td className="px-4 py-2">{b.category}</td>
-                <td className="px-4 py-2">{b.department}</td>
-                <td className="px-4 py-2">{b.price_type}</td>
-                <td className="px-4 py-2">{formatLocalDateTime(b.start_date)}</td>
-                <td className="px-4 py-2">{formatLocalDateTime(b.end_date)}</td>
-                <td className="px-4 py-2">{getStatusBadge(b)}</td>
-                <td className="px-4 py-2">
-                  <button className="text-blue-600 mr-3" onClick={() => handleEdit(b)}>
-                    ✏️
-                  </button>
-                  <button className="text-red-600" onClick={() => deleteBooking(b.booking_id)}>
-                    🗑️
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {filteredBookings.length === 0 && (
+      {/* Bookings Table */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-700">Booking History</h2>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-100">
               <tr>
-                <td colSpan={10} className="text-center py-4 text-gray-500">
-                  No data found
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredBookings.map((b) => (
+                <tr key={b.booking_id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{b.booking_id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.service_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.manpower_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">{b.category}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{b.department}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {b.price_type === 'per_hour' ? 'Per Hour' : 'Per Sample'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.start_date)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatLocalDateTime(b.end_date)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(b)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleEdit(b)}
+                        className="text-blue-600 hover:text-blue-900 transition duration-200"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => deleteBooking(b.booking_id)}
+                        className="text-red-600 hover:text-red-900 transition duration-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredBookings.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <span className="text-lg mb-2">📅</span>
+                      <p>No bookings found</p>
+                      <p className="text-sm text-gray-400 mt-1">Create your first booking to get started</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
