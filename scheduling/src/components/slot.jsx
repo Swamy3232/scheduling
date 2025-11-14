@@ -5,17 +5,29 @@ const API_URL = "https://manpower.cmti.online";
 
 export default function ProfessionalBookingForm() {
   const [services, setServices] = useState([]);
+  const [manpowerList, setManpowerList] = useState([]);
+
   const [selectedService, setSelectedService] = useState("");
+  const [selectedManpower, setSelectedManpower] = useState("");
+
+  const [serviceManpower, setServiceManpower] = useState([]); // manpower assigned to selected service
+  const [freeManpower, setFreeManpower] = useState([]); // free manpower for selected slot
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
   const [priceType, setPriceType] = useState("");
+
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
+
+  /* ---------------------------- Fetch Initial Data --------------------------- */
 
   const fetchServices = async () => {
     try {
@@ -38,16 +50,70 @@ export default function ProfessionalBookingForm() {
     }
   };
 
+  const fetchManpower = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/manpower/`);
+      setManpowerList(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   useEffect(() => {
     fetchServices();
     fetchBookings();
+    fetchManpower();
   }, []);
 
-  const formatLocalDateTime = (isoString) => {
-    if (!isoString) return "-";
-    const d = new Date(isoString);
-    return d.toLocaleString("en-IN", { hour12: false });
-  };
+  /* ---------------------- When service changes → load manpower ---------------------- */
+
+  useEffect(() => {
+    if (!selectedService) {
+      setServiceManpower([]);
+      return;
+    }
+
+    // Fetch manpower linked to selected service
+    const load = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/service_manpower/${selectedService}`);
+        setServiceManpower(res.data); // [{ manpower_id, manpower_name }]
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    load();
+  }, [selectedService]);
+
+  /* ------------------ Check FREE manpower when date or service changes ------------------ */
+
+  useEffect(() => {
+    if (!selectedService || !startDate || !endDate) {
+      setFreeManpower([]);
+      return;
+    }
+
+    const checkAvailability = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/bookings/free_manpower`, {
+          params: {
+            service_id: selectedService,
+            start_date: new Date(startDate).toISOString(),
+            end_date: new Date(endDate).toISOString(),
+          },
+        });
+
+        setFreeManpower(res.data.free); // array of free manpower
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    checkAvailability();
+  }, [selectedService, startDate, endDate]);
+
+  /* ------------------------------ Helper Functions ------------------------------ */
 
   const toLocalInputFormat = (isoString) => {
     const d = new Date(isoString);
@@ -57,33 +123,36 @@ export default function ProfessionalBookingForm() {
     )}:${pad(d.getMinutes())}`;
   };
 
-  const toUTC = (localValue) => {
-    const date = new Date(localValue);
-    return date.toISOString();
+  const formatLocalDateTime = (isoString) => {
+    if (!isoString) return "-";
+    return new Date(isoString).toLocaleString("en-IN", { hour12: false });
   };
 
-  const getBookingStatus = (b) => {
+  const toUTC = (v) => new Date(v).toISOString();
+
+  const getStatusBadge = (b) => {
     const now = new Date();
     const s = new Date(b.start_date);
     const e = new Date(b.end_date);
 
-    if (now > e) return "completed";
-    if (now >= s && now <= e) return "in-progress";
-    return "upcoming";
+    if (now > e)
+      return <span className="bg-purple-200 px-2 py-1 rounded text-xs">Completed</span>;
+    if (now >= s && now <= e)
+      return <span className="bg-green-200 px-2 py-1 rounded text-xs">In Progress</span>;
+    return <span className="bg-blue-200 px-2 py-1 rounded text-xs">Scheduled</span>;
   };
 
-  const getStatusBadge = (b) => {
-    const s = getBookingStatus(b);
-    if (s === "completed")
-      return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">Completed</span>;
-    if (s === "in-progress")
-      return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">In Progress</span>;
-    return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Scheduled</span>;
-  };
+  /* ------------------------------ Create Booking ------------------------------ */
 
   const createBooking = async () => {
-    if (!selectedService || !startDate || !endDate || !category || !department || !priceType) {
-      setMessage("⚠️ Please fill in all fields");
+    if (!selectedService || !selectedManpower || !startDate || !endDate) {
+      setMessage("⚠️ Please fill all fields");
+      return;
+    }
+
+    // Check if selected manpower is free
+    if (!freeManpower.some((m) => m.manpower_id === Number(selectedManpower))) {
+      setMessage("❌ Selected manpower is not free in this time slot");
       return;
     }
 
@@ -92,6 +161,7 @@ export default function ProfessionalBookingForm() {
 
       const payload = {
         service_id: Number(selectedService),
+        manpower_id: Number(selectedManpower),
         start_date: toUTC(startDate),
         end_date: toUTC(endDate),
         category,
@@ -104,11 +174,14 @@ export default function ProfessionalBookingForm() {
       fetchBookings();
       resetForm();
     } catch (err) {
+      console.log(err);
       setMessage("❌ Error creating booking");
     } finally {
       setLoading(false);
     }
   };
+
+  /* ------------------------------ Edit Booking ------------------------------ */
 
   const handleEdit = (b) => {
     setEditId(b.booking_id);
@@ -116,11 +189,12 @@ export default function ProfessionalBookingForm() {
     const srv = services.find((s) => s.service_name === b.service_name);
     setSelectedService(srv ? srv.service_id : "");
 
+    setSelectedManpower(b.manpower_id || "");
     setStartDate(toLocalInputFormat(b.start_date));
     setEndDate(toLocalInputFormat(b.end_date));
-    setCategory(b.category || "");
-    setDepartment(b.department || "");
-    setPriceType(b.price_type || "");
+    setCategory(b.category);
+    setDepartment(b.department);
+    setPriceType(b.price_type);
 
     setMessage(`✏️ Editing booking #${b.booking_id}`);
   };
@@ -137,61 +211,86 @@ export default function ProfessionalBookingForm() {
         category,
         department,
         price_type: priceType,
+        manpower_id: selectedManpower,
       };
 
       await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
+
       setMessage("✅ Booking updated successfully");
       fetchBookings();
       resetForm();
     } catch (err) {
+      console.log(err);
       setMessage("❌ Error updating booking");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ------------------------------ Delete Booking ------------------------------ */
+
   const deleteBooking = async (id) => {
     if (!window.confirm("Delete this booking?")) return;
-
     try {
       await axios.delete(`${API_URL}/bookings/${id}`);
       setMessage("✅ Booking deleted");
       fetchBookings();
     } catch (err) {
+      console.log(err);
       setMessage("❌ Error deleting booking");
     }
   };
 
   const resetForm = () => {
     setSelectedService("");
+    setSelectedManpower("");
     setStartDate("");
     setEndDate("");
     setCategory("");
     setDepartment("");
     setPriceType("");
     setEditId(null);
+    setFreeManpower([]);
   };
 
-  return (
-    <div className="w-full max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 mt-6 border border-gray-200">
-      <h2 className="text-2xl font-bold mb-4">📅 Service Booking Management</h2>
+  /* ------------------------------ UI Rendering ------------------------------ */
 
-      <div className="bg-blue-50 rounded-lg p-6 mb-8">
-        <h3 className="text-lg font-semibold mb-4">
-          {editId ? `✏️ Edit Booking #${editId}` : "➕ Create New Booking"}
-        </h3>
+  return (
+    <div className="w-full max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 mt-6">
+
+      {/* -------------------- Form -------------------- */}
+      <h2 className="text-2xl font-bold mb-4">📅 Service Booking</h2>
+
+      <div className="bg-blue-50 p-6 rounded-lg mb-6">
 
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+
+          {/* Select Service */}
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
             className="border rounded-lg px-3 py-2"
-            disabled={!!editId}
           >
             <option value="">Select Service</option>
             {services.map((s) => (
               <option key={s.service_id} value={s.service_id}>
                 {s.service_name}
+              </option>
+            ))}
+          </select>
+
+          {/* Manpower Dropdown */}
+          <select
+            value={selectedManpower}
+            onChange={(e) => setSelectedManpower(e.target.value)}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option value="">Select Manpower</option>
+
+            {/* Only manpower linked to selected service */}
+            {serviceManpower.map((mp) => (
+              <option key={mp.manpower_id} value={mp.manpower_id}>
+                {mp.manpower_name}
               </option>
             ))}
           </select>
@@ -207,23 +306,21 @@ export default function ProfessionalBookingForm() {
           </select>
 
           <select
-  value={department}
-  onChange={(e) => setDepartment(e.target.value)}
-  className="border rounded-lg px-3 py-2"
->
-  <option value="">Select Department</option>
-
-  <option value="SMPM">SMPM</option>
-  <option value="CMF">CMF</option>
-  <option value="MNTM">MNTM</option>
-  <option value="ASMP">ASMP</option>
-  <option value="AEAMT">AEAMT</option>
-  <option value="SVT">SVT</option>
-  <option value="PDE">PDE</option>
-  <option value="PAT">PAT</option>
-  <option value="OTHER">OTHER</option>
-</select>
-
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option value="">Select Department</option>
+            <option value="SMPM">SMPM</option>
+            <option value="CMF">CMF</option>
+            <option value="MNTM">MNTM</option>
+            <option value="ASMP">ASMP</option>
+            <option value="AEAMT">AEAMT</option>
+            <option value="SVT">SVT</option>
+            <option value="PDE">PDE</option>
+            <option value="PAT">PAT</option>
+            <option value="OTHER">OTHER</option>
+          </select>
 
           <select
             value={priceType}
@@ -250,15 +347,27 @@ export default function ProfessionalBookingForm() {
           />
         </div>
 
-        <div className="flex space-x-2">
+        {/* Free manpower list */}
+        {freeManpower.length > 0 && (
+          <div className="bg-green-50 border border-green-300 p-3 rounded mb-4 text-sm">
+            <strong>Free manpower for this slot:</strong><br />
+            {freeManpower.map((m) => (
+              <span key={m.manpower_id} className="mr-2 px-2 py-1 bg-green-200 rounded">
+                {m.manpower_name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
           {editId ? (
             <>
               <button
                 onClick={updateBooking}
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex-1"
               >
-                {loading ? "Updating..." : "💾 Update"}
+                {loading ? "Updating..." : "💾 Update Booking"}
               </button>
               <button onClick={resetForm} className="px-4 py-2 border rounded-lg">
                 Cancel
@@ -268,7 +377,7 @@ export default function ProfessionalBookingForm() {
             <button
               onClick={createBooking}
               disabled={loading}
-              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1"
             >
               {loading ? "Creating..." : "📝 Create Booking"}
             </button>
@@ -288,40 +397,41 @@ export default function ProfessionalBookingForm() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+      {/* -------------------- Bookings Table -------------------- */}
+      <div className="border rounded-lg">
+        <table className="min-w-full">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium">Booking ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Service</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Department</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Price Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Manpower</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Start</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">End</th>
-              <th className="px-6 py-3 text-left text-xs font-medium">Status</th>
-              <th className="px-6 py-3"></th>
+              <th className="px-4 py-2">Booking ID</th>
+              <th className="px-4 py-2">Service</th>
+              <th className="px-4 py-2">Manpower</th>
+              <th className="px-4 py-2">Category</th>
+              <th className="px-4 py-2">Department</th>
+              <th className="px-4 py-2">Price Type</th>
+              <th className="px-4 py-2">Start</th>
+              <th className="px-4 py-2">End</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2"></th>
             </tr>
           </thead>
 
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {filteredBookings.map((b) => (
-              <tr key={b.booking_id}>
-                <td className="px-6 py-4">#{b.booking_id}</td>
-                <td className="px-6 py-4">{b.service_name}</td>
-                <td className="px-6 py-4">{b.category || "-"}</td>
-                <td className="px-6 py-4">{b.department || "-"}</td>
-                <td className="px-6 py-4">{b.price_type || "-"}</td>
-                <td className="px-6 py-4">{b.manpower_name || "-"}</td>
-                <td className="px-6 py-4">{formatLocalDateTime(b.start_date)}</td>
-                <td className="px-6 py-4">{formatLocalDateTime(b.end_date)}</td>
-                <td className="px-6 py-4">{getStatusBadge(b)}</td>
-                <td className="px-6 py-4">
-                  <button onClick={() => handleEdit(b)} className="text-blue-600 mr-2">
+              <tr key={b.booking_id} className="border-b">
+                <td className="px-4 py-2">#{b.booking_id}</td>
+                <td className="px-4 py-2">{b.service_name}</td>
+                <td className="px-4 py-2">{b.manpower_name}</td>
+                <td className="px-4 py-2">{b.category}</td>
+                <td className="px-4 py-2">{b.department}</td>
+                <td className="px-4 py-2">{b.price_type}</td>
+                <td className="px-4 py-2">{formatLocalDateTime(b.start_date)}</td>
+                <td className="px-4 py-2">{formatLocalDateTime(b.end_date)}</td>
+                <td className="px-4 py-2">{getStatusBadge(b)}</td>
+                <td className="px-4 py-2">
+                  <button className="text-blue-600 mr-3" onClick={() => handleEdit(b)}>
                     ✏️
                   </button>
-                  <button onClick={() => deleteBooking(b.booking_id)} className="text-red-600">
+                  <button className="text-red-600" onClick={() => deleteBooking(b.booking_id)}>
                     🗑️
                   </button>
                 </td>
@@ -330,8 +440,8 @@ export default function ProfessionalBookingForm() {
 
             {filteredBookings.length === 0 && (
               <tr>
-                <td colSpan={10} className="py-4 text-center text-gray-500">
-                  No bookings found
+                <td colSpan={10} className="text-center py-4 text-gray-500">
+                  No data found
                 </td>
               </tr>
             )}
