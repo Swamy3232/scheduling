@@ -206,20 +206,22 @@ export default function ProfessionalBookingForm() {
             <option value="industrial">Industrial</option>
           </select>
 
-          const departments = ["SMPM", "CMF", "MNTM", "ASMP", "AEAMT", "SVT", "PDE", "PAT", "OTHER"];
-
-<select
+          <select
   value={department}
   onChange={(e) => setDepartment(e.target.value)}
   className="border rounded-lg px-3 py-2"
 >
   <option value="">Select Department</option>
 
-  {departments.map((dept) => (
-    <option key={dept} value={dept}>
-      {dept}
-    </option>
-  ))}
+  <option value="SMPM">SMPM</option>
+  <option value="CMF">CMF</option>
+  <option value="MNTM">MNTM</option>
+  <option value="ASMP">ASMP</option>
+  <option value="AEAMT">AEAMT</option>
+  <option value="SVT">SVT</option>
+  <option value="PDE">PDE</option>
+  <option value="PAT">PAT</option>
+  <option value="OTHER">OTHER</option>
 </select>
 
 
