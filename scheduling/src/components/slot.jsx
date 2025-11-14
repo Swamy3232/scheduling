@@ -10,17 +10,12 @@ export default function ProfessionalBookingForm() {
   const [endDate, setEndDate] = useState("");
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
-  const [priceType, setPriceType] = useState(""); // ✅ NEW FIELD
+  const [priceType, setPriceType] = useState("");
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
-
-  // Filters
-  const [serviceFilter, setServiceFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   // -----------------------------
   // Fetch Services
@@ -113,7 +108,7 @@ export default function ProfessionalBookingForm() {
         end_date: toUTCDateTimeString(endDate),
         category,
         department,
-        price_type: priceType, // ✅ Added
+        price_type: priceType,
       };
 
       console.log("📤 Sending booking payload:", payload);
@@ -139,38 +134,38 @@ export default function ProfessionalBookingForm() {
     setEndDate(b.end_date.slice(0, 16));
     setCategory(b.category || "");
     setDepartment(b.department || "");
-    setPriceType(b.price_type || ""); // ✅ Load into edit form
+    setPriceType(b.price_type || "");
     setMessage(`✏️ Editing booking #${b.booking_id}`);
   };
 
- const updateBooking = async () => {
-  if (!editId) return;
+  const updateBooking = async () => {
+    if (!editId) return;
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const params = {
-      start_date: toUTCDateTimeString(startDate),
-      end_date: toUTCDateTimeString(endDate),
-      category,
-      department,
-      price_type: priceType,
-    };
+      const params = {
+        start_date: toUTCDateTimeString(startDate),
+        end_date: toUTCDateTimeString(endDate),
+        category,
+        department,
+        price_type: priceType,
+      };
 
-    console.log("📤 Updating booking with query params:", params);
+      console.log("📤 Updating booking with query params:", params);
 
-    await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
+      await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
 
-    setMessage("✅ Booking updated successfully");
-    fetchBookings();
-    resetForm();
-  } catch (err) {
-    console.error("Error updating booking:", err);
-    setMessage(err.response?.data?.detail || "❌ Error updating booking");
-  } finally {
-    setLoading(false);
-  }
-};
+      setMessage("✅ Booking updated successfully");
+      fetchBookings();
+      resetForm();
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      setMessage(err.response?.data?.detail || "❌ Error updating booking");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const deleteBooking = async (bookingId) => {
     if (!window.confirm("Are you sure you want to delete this booking?")) return;
@@ -190,7 +185,7 @@ export default function ProfessionalBookingForm() {
     setEndDate("");
     setCategory("");
     setDepartment("");
-    setPriceType(""); // ✅ Reset
+    setPriceType("");
     setEditId(null);
   };
 
@@ -208,6 +203,7 @@ export default function ProfessionalBookingForm() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+          
           {/* Service */}
           <select
             value={selectedService}
@@ -247,16 +243,15 @@ export default function ProfessionalBookingForm() {
             <option value="d">Department D</option>
           </select>
 
-          {/* ✅ Price Type */}
+          {/* ✅ FIXED PRICE TYPE */}
           <select
             value={priceType}
             onChange={(e) => setPriceType(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2"
           >
             <option value="">Select Price Type</option>
-            <option value="academic">Academic</option>
-            <option value="industrial">Industrial</option>
-            <option value="other">Other</option>
+            <option value="per_hour">Per Hour</option>
+            <option value="per_day">Per Day</option>
           </select>
 
           <input
@@ -265,6 +260,7 @@ export default function ProfessionalBookingForm() {
             onChange={(e) => setStartDate(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2"
           />
+
           <input
             type="datetime-local"
             value={endDate}
@@ -372,6 +368,7 @@ export default function ProfessionalBookingForm() {
                 </td>
               </tr>
             ))}
+
             {filteredBookings.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-6 py-4 text-center text-gray-500">
