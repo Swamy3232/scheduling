@@ -281,21 +281,35 @@ export default function ProfessionalBookingForm() {
           </select>
 
           {/* Manpower Dropdown */}
-          <select
-            value={selectedManpower}
-            onChange={(e) => setSelectedManpower(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select Manpower</option>
+          {/* Manpower Dropdown */}
+<select
+  value={selectedManpower}
+  onChange={(e) => setSelectedManpower(e.target.value)}
+  className="border rounded-lg px-3 py-2"
+>
+  <option value="">Select Manpower</option>
 
-            {/* Only manpower linked to selected service */}
-            {serviceManpower.map((mp) => (
-             <option key={mp.manpower_id} value={mp.manpower_id}>
-              {mp.name}
-            </option>
+  {serviceManpower.length > 0 ? (
+    serviceManpower.map((mp) => {
+      // Check if manpower is free in selected slot
+      const isFree = freeManpower.some((f) => f.manpower_id === mp.manpower_id);
+      return (
+        <option
+          key={mp.manpower_id}
+          value={mp.manpower_id}
+          disabled={!isFree} // disable if not free
+        >
+          {mp.name} {isFree ? "" : "(Busy)"}
+        </option>
+      );
+    })
+  ) : (
+    <option value="" disabled>
+      No manpower assigned to this service
+    </option>
+  )}
+</select>
 
-            ))}
-          </select>
 
           <select
             value={category}
