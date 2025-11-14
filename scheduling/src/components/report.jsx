@@ -9,7 +9,7 @@ export default function Report() {
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
-  const [prices, setPrices] = useState({}); // store rates for service_id+price_type
+  const [prices, setPrices] = useState({}); // store rates keyed by service_id
   const [loading, setLoading] = useState(true);
 
   // Fetch bookings
@@ -23,13 +23,14 @@ export default function Report() {
     }
   };
 
-  // Fetch all service prices
+  // Fetch service prices
   const fetchPrices = async () => {
     try {
       const res = await axios.get(PRICE_API);
       const priceMap = {};
+      // Store price keyed by service_id, use first matching rate
       res.data.forEach((p) => {
-        priceMap[`${p.service_id}_${p.price_type}`] = p.rate;
+        priceMap[p.service_id] = p.rate;
       });
       setPrices(priceMap);
     } catch (err) {
@@ -53,13 +54,12 @@ export default function Report() {
   const uniqueCategories = [...new Set(bookings.map((b) => b.category).filter(Boolean))];
   const uniqueDepartments = [...new Set(bookings.map((b) => b.department).filter(Boolean))];
 
-  // Compute total cost per booking
+  // Compute booking cost using service_id lookup
   const getBookingCost = (booking) => {
-    const key = `${booking.service_id}_${booking.price_type}`;
-    const rate = prices[key] || 0;
+    const rate = prices[booking.service_id] || 0; // fallback 0 if missing
     const start = new Date(booking.start_date);
     const end = new Date(booking.end_date);
-    const hours = Math.abs(end - start) / 36e5;
+    const hours = Math.abs(end - start) / 36e5; // convert ms to hours
     return parseFloat((hours * rate).toFixed(2));
   };
 
@@ -71,7 +71,7 @@ export default function Report() {
   // Print report
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
-    let tableRows = filteredBookings
+    const tableRows = filteredBookings
       .map((b) => {
         const cost = getBookingCost(b);
         return `<tr>
