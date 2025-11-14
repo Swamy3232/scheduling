@@ -6,89 +6,102 @@ const API_URL = "https://manpower.cmti.online";
 export default function ProfessionalBookingForm() {
   const [services, setServices] = useState([]);
   const [manpowerList, setManpowerList] = useState([]);
+  const [serviceManpower, setServiceManpower] = useState([]);
+  const [freeManpower, setFreeManpower] = useState([]);
 
   const [selectedService, setSelectedService] = useState("");
   const [selectedManpower, setSelectedManpower] = useState("");
-
-  const [serviceManpower, setServiceManpower] = useState([]); // manpower assigned to selected service
-  const [freeManpower, setFreeManpower] = useState([]); // free manpower for selected slot
-
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
   const [priceType, setPriceType] = useState("");
 
   const [bookings, setBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
-
+  const [editId, setEditId] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [editId, setEditId] = useState(null);
 
-  /* ---------------------------- Fetch Initial Data --------------------------- */
+  /* ------------------- Helpers ------------------- */
+  const toUTC = (v) => new Date(v).toISOString();
+  const toLocalInputFormat = (isoString) => {
+    const d = new Date(isoString);
+    const pad = (n) => (n < 10 ? "0" + n : n);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}`;
+  };
+  const formatLocalDateTime = (isoString) =>
+    isoString ? new Date(isoString).toLocaleString("en-IN", { hour12: false }) : "-";
 
-  const fetchServices = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/services/`);
-      setServices(res.data);
-    } catch (err) {
-      console.error(err);
-      setMessage("❌ Failed to load services");
-    }
+  const getStatusBadge = (b) => {
+    const now = new Date();
+    const s = new Date(b.start_date);
+    const e = new Date(b.end_date);
+    if (now > e) return <span className="bg-purple-200 px-2 py-1 rounded text-xs">Completed</span>;
+    if (now >= s && now <= e) return <span className="bg-green-200 px-2 py-1 rounded text-xs">In Progress</span>;
+    return <span className="bg-blue-200 px-2 py-1 rounded text-xs">Scheduled</span>;
   };
 
-  const fetchBookings = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/bookings/`);
-      setBookings(res.data);
-      setFilteredBookings(res.data);
-    } catch (err) {
-      console.error(err);
-      setMessage("❌ Failed to load bookings");
-    }
-  };
-
-  const fetchManpower = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/manpower/`);
-      setManpowerList(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
+  /* ------------------- Fetch Data ------------------- */
   useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/services/`);
+        setServices(res.data);
+      } catch (err) {
+        console.error(err);
+        setMessage("❌ Failed to load services");
+      }
+    };
+
+    const fetchBookings = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/bookings/`);
+        setBookings(res.data);
+      } catch (err) {
+        console.error(err);
+        setMessage("❌ Failed to load bookings");
+      }
+    };
+
+    const fetchManpower = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/manpower/`);
+        setManpowerList(res.data);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
     fetchServices();
     fetchBookings();
     fetchManpower();
   }, []);
 
-  /* ---------------------- When service changes → load manpower ---------------------- */
-
+  /* ------------------- Fetch Service Manpower ------------------- */
   useEffect(() => {
     if (!selectedService) {
       setServiceManpower([]);
       return;
     }
 
-    // Fetch manpower linked to selected service
-    const load = async () => {
+    const loadServiceManpower = async () => {
       try {
-        const res = await axios.get(`${API_URL}/bookings/api/service_manpower/${selectedService}`);
-
-        setServiceManpower(res.data); // [{ manpower_id, manpower_name }]
+        const res = await axios.get(
+          `${API_URL}/bookings/api/service_manpower/${Number(selectedService)}`
+        );
+        console.log("Service manpower:", res.data);
+        setServiceManpower(res.data);
       } catch (err) {
-        console.log(err);
+        console.log("Error fetching service manpower:", err);
       }
     };
 
-    load();
+    loadServiceManpower();
   }, [selectedService]);
 
-  /* ------------------ Check FREE manpower when date or service changes ------------------ */
-
+  /* ------------------- Fetch Free Manpower ------------------- */
   useEffect(() => {
     if (!selectedService || !startDate || !endDate) {
       setFreeManpower([]);
@@ -98,150 +111,24 @@ export default function ProfessionalBookingForm() {
     const checkAvailability = async () => {
       try {
         const res = await axios.get(`${API_URL}/bookings/free_manpower`, {
-    params: {
-      start_date: startDate,   // ISO string
-      end_date: endDate,       // ISO string
-      service_id: selectedService, // optional
-    },
-  });
-
-        setFreeManpower(res.data.free); // array of free manpower
+          params: {
+            start_date: toUTC(startDate),
+            end_date: toUTC(endDate),
+            service_id: Number(selectedService),
+          },
+        });
+        console.log("Free manpower:", res.data);
+        setFreeManpower(res.data.free || []);
       } catch (err) {
-        console.log(err);
+        console.log("Error fetching free manpower:", err);
+        setFreeManpower([]);
       }
     };
 
     checkAvailability();
   }, [selectedService, startDate, endDate]);
 
-  /* ------------------------------ Helper Functions ------------------------------ */
-
-  const toLocalInputFormat = (isoString) => {
-    const d = new Date(isoString);
-    const pad = (n) => (n < 10 ? "0" + n : n);
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
-  };
-
-  const formatLocalDateTime = (isoString) => {
-    if (!isoString) return "-";
-    return new Date(isoString).toLocaleString("en-IN", { hour12: false });
-  };
-
-  const toUTC = (v) => new Date(v).toISOString();
-
-  const getStatusBadge = (b) => {
-    const now = new Date();
-    const s = new Date(b.start_date);
-    const e = new Date(b.end_date);
-
-    if (now > e)
-      return <span className="bg-purple-200 px-2 py-1 rounded text-xs">Completed</span>;
-    if (now >= s && now <= e)
-      return <span className="bg-green-200 px-2 py-1 rounded text-xs">In Progress</span>;
-    return <span className="bg-blue-200 px-2 py-1 rounded text-xs">Scheduled</span>;
-  };
-
-  /* ------------------------------ Create Booking ------------------------------ */
-
-  const createBooking = async () => {
-    if (!selectedService || !selectedManpower || !startDate || !endDate) {
-      setMessage("⚠️ Please fill all fields");
-      return;
-    }
-
-    // Check if selected manpower is free
-    if (!freeManpower.some((m) => m.manpower_id === Number(selectedManpower))) {
-      setMessage("❌ Selected manpower is not free in this time slot");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const payload = {
-        service_id: Number(selectedService),
-        manpower_id: Number(selectedManpower),
-        start_date: toUTC(startDate),
-        end_date: toUTC(endDate),
-        category,
-        department,
-        price_type: priceType,
-      };
-
-      await axios.post(`${API_URL}/bookings/`, payload);
-      setMessage("✅ Booking created successfully");
-      fetchBookings();
-      resetForm();
-    } catch (err) {
-      console.log(err);
-      setMessage("❌ Error creating booking");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ------------------------------ Edit Booking ------------------------------ */
-
-  const handleEdit = (b) => {
-    setEditId(b.booking_id);
-
-    const srv = services.find((s) => s.service_name === b.service_name);
-    setSelectedService(srv ? srv.service_id : "");
-
-    setSelectedManpower(b.manpower_id || "");
-    setStartDate(toLocalInputFormat(b.start_date));
-    setEndDate(toLocalInputFormat(b.end_date));
-    setCategory(b.category);
-    setDepartment(b.department);
-    setPriceType(b.price_type);
-
-    setMessage(`✏️ Editing booking #${b.booking_id}`);
-  };
-
-  const updateBooking = async () => {
-    if (!editId) return;
-
-    try {
-      setLoading(true);
-
-      const params = {
-        start_date: toUTC(startDate),
-        end_date: toUTC(endDate),
-        category,
-        department,
-        price_type: priceType,
-        manpower_id: selectedManpower,
-      };
-
-      await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
-
-      setMessage("✅ Booking updated successfully");
-      fetchBookings();
-      resetForm();
-    } catch (err) {
-      console.log(err);
-      setMessage("❌ Error updating booking");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ------------------------------ Delete Booking ------------------------------ */
-
-  const deleteBooking = async (id) => {
-    if (!window.confirm("Delete this booking?")) return;
-    try {
-      await axios.delete(`${API_URL}/bookings/${id}`);
-      setMessage("✅ Booking deleted");
-      fetchBookings();
-    } catch (err) {
-      console.log(err);
-      setMessage("❌ Error deleting booking");
-    }
-  };
-
+  /* ------------------- Create or Update Booking ------------------- */
   const resetForm = () => {
     setSelectedService("");
     setSelectedManpower("");
@@ -252,21 +139,99 @@ export default function ProfessionalBookingForm() {
     setPriceType("");
     setEditId(null);
     setFreeManpower([]);
+    setMessage("");
   };
 
-  /* ------------------------------ UI Rendering ------------------------------ */
+  const createBooking = async () => {
+    if (!selectedService || !selectedManpower || !startDate || !endDate) {
+      setMessage("⚠️ Please fill all fields");
+      return;
+    }
 
+    const selectedMan = Number(selectedManpower);
+    const isFree = freeManpower.some((m) => m.manpower_id === selectedMan || m.id === selectedMan);
+
+    if (!isFree) {
+      setMessage("❌ Selected manpower is not free in this time slot");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await axios.post(`${API_URL}/bookings/`, {
+        service_id: Number(selectedService),
+        manpower_id: selectedMan,
+        start_date: toUTC(startDate),
+        end_date: toUTC(endDate),
+        category,
+        department,
+        price_type: priceType,
+      });
+      setMessage("✅ Booking created successfully");
+      resetForm();
+    } catch (err) {
+      console.log(err);
+      setMessage("❌ Error creating booking");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (b) => {
+    setEditId(b.booking_id);
+    setSelectedService(b.service_id || "");
+    setSelectedManpower(b.manpower_id || "");
+    setStartDate(toLocalInputFormat(b.start_date));
+    setEndDate(toLocalInputFormat(b.end_date));
+    setCategory(b.category);
+    setDepartment(b.department);
+    setPriceType(b.price_type);
+    setMessage(`✏️ Editing booking #${b.booking_id}`);
+  };
+
+  const updateBooking = async () => {
+    if (!editId) return;
+
+    try {
+      setLoading(true);
+      await axios.put(`${API_URL}/bookings/${editId}`, null, {
+        params: {
+          start_date: toUTC(startDate),
+          end_date: toUTC(endDate),
+          category,
+          department,
+          price_type: priceType,
+          manpower_id: Number(selectedManpower),
+        },
+      });
+      setMessage("✅ Booking updated successfully");
+      resetForm();
+    } catch (err) {
+      console.log(err);
+      setMessage("❌ Error updating booking");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteBooking = async (id) => {
+    if (!window.confirm("Delete this booking?")) return;
+    try {
+      await axios.delete(`${API_URL}/bookings/${id}`);
+      setMessage("✅ Booking deleted");
+    } catch (err) {
+      console.log(err);
+      setMessage("❌ Error deleting booking");
+    }
+  };
+
+  /* ------------------- Render ------------------- */
   return (
     <div className="w-full max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 mt-6">
-
-      {/* -------------------- Form -------------------- */}
       <h2 className="text-2xl font-bold mb-4">📅 Service Booking</h2>
 
       <div className="bg-blue-50 p-6 rounded-lg mb-6">
-
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
-
-          {/* Select Service */}
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
@@ -280,52 +245,35 @@ export default function ProfessionalBookingForm() {
             ))}
           </select>
 
-          {/* Manpower Dropdown */}
-          {/* Manpower Dropdown */}
-<select
-  value={selectedManpower}
-  onChange={(e) => setSelectedManpower(e.target.value)}
-  className="border rounded-lg px-3 py-2"
->
-  <option value="">Select Manpower</option>
-
-  {serviceManpower.length > 0 ? (
-    serviceManpower.map((mp) => {
-      // Check if manpower is free in selected slot
-      const isFree = freeManpower.some((f) => f.manpower_id === mp.manpower_id);
-      return (
-        <option
-          key={mp.manpower_id}
-          value={mp.manpower_id}
-          disabled={!isFree} // disable if not free
-        >
-          {mp.name} {isFree ? "" : "(Busy)"}
-        </option>
-      );
-    })
-  ) : (
-    <option value="" disabled>
-      No manpower assigned to this service
-    </option>
-  )}
-</select>
-
-
           <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={selectedManpower}
+            onChange={(e) => setSelectedManpower(e.target.value)}
             className="border rounded-lg px-3 py-2"
           >
+            <option value="">Select Manpower</option>
+            {serviceManpower.length > 0 ? (
+              serviceManpower.map((mp) => {
+                const isFree = freeManpower.some((f) => f.manpower_id === mp.manpower_id || f.id === mp.manpower_id);
+                return (
+                  <option key={mp.manpower_id} value={mp.manpower_id} disabled={!isFree}>
+                    {mp.name} {isFree ? "" : "(Busy)"}
+                  </option>
+                );
+              })
+            ) : (
+              <option value="" disabled>
+                No manpower assigned to this service
+              </option>
+            )}
+          </select>
+
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="border rounded-lg px-3 py-2">
             <option value="">Select Category</option>
             <option value="academic">Academic</option>
             <option value="industrial">Industrial</option>
           </select>
 
-          <select
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
+          <select value={department} onChange={(e) => setDepartment(e.target.value)} className="border rounded-lg px-3 py-2">
             <option value="">Select Department</option>
             <option value="SMPM">SMPM</option>
             <option value="CMF">CMF</option>
@@ -338,38 +286,22 @@ export default function ProfessionalBookingForm() {
             <option value="OTHER">OTHER</option>
           </select>
 
-          <select
-            value={priceType}
-            onChange={(e) => setPriceType(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          >
+          <select value={priceType} onChange={(e) => setPriceType(e.target.value)} className="border rounded-lg px-3 py-2">
             <option value="">Select Price Type</option>
             <option value="per_hour">Per Hour</option>
             <option value="per_sample">Per Sample</option>
           </select>
 
-          <input
-            type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          />
-
-          <input
-            type="datetime-local"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-          />
+          <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded-lg px-3 py-2" />
+          <input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded-lg px-3 py-2" />
         </div>
 
-        {/* Free manpower list */}
         {freeManpower.length > 0 && (
           <div className="bg-green-50 border border-green-300 p-3 rounded mb-4 text-sm">
             <strong>Free manpower for this slot:</strong><br />
             {freeManpower.map((m) => (
-              <span key={m.manpower_id} className="mr-2 px-2 py-1 bg-green-200 rounded">
-                {m.manpower_name}
+              <span key={m.manpower_id || m.id} className="mr-2 px-2 py-1 bg-green-200 rounded">
+                {m.manpower_name || m.name}
               </span>
             ))}
           </div>
@@ -378,11 +310,7 @@ export default function ProfessionalBookingForm() {
         <div className="flex gap-2">
           {editId ? (
             <>
-              <button
-                onClick={updateBooking}
-                disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex-1"
-              >
+              <button onClick={updateBooking} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex-1">
                 {loading ? "Updating..." : "💾 Update Booking"}
               </button>
               <button onClick={resetForm} className="px-4 py-2 border rounded-lg">
@@ -390,30 +318,19 @@ export default function ProfessionalBookingForm() {
               </button>
             </>
           ) : (
-            <button
-              onClick={createBooking}
-              disabled={loading}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1"
-            >
+            <button onClick={createBooking} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1">
               {loading ? "Creating..." : "📝 Create Booking"}
             </button>
           )}
         </div>
 
         {message && (
-          <div
-            className={`mt-4 p-3 rounded-lg text-sm ${
-              message.includes("❌")
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
-          >
+          <div className={`mt-4 p-3 rounded-lg text-sm ${message.includes("❌") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
             {message}
           </div>
         )}
       </div>
 
-      {/* -------------------- Bookings Table -------------------- */}
       <div className="border rounded-lg">
         <table className="min-w-full">
           <thead className="bg-gray-100">
@@ -430,9 +347,8 @@ export default function ProfessionalBookingForm() {
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
-
           <tbody>
-            {filteredBookings.map((b) => (
+            {bookings.map((b) => (
               <tr key={b.booking_id} className="border-b">
                 <td className="px-4 py-2">#{b.booking_id}</td>
                 <td className="px-4 py-2">{b.service_name}</td>
@@ -454,7 +370,7 @@ export default function ProfessionalBookingForm() {
               </tr>
             ))}
 
-            {filteredBookings.length === 0 && (
+            {bookings.length === 0 && (
               <tr>
                 <td colSpan={10} className="text-center py-4 text-gray-500">
                   No data found
