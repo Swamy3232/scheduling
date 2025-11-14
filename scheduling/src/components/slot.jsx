@@ -143,31 +143,34 @@ export default function ProfessionalBookingForm() {
     setMessage(`✏️ Editing booking #${b.booking_id}`);
   };
 
-  const updateBooking = async () => {
-    if (!editId) return;
+ const updateBooking = async () => {
+  if (!editId) return;
 
-    try {
-      setLoading(true);
-      const payload = {
-        start_date: toUTCDateTimeString(startDate),
-        end_date: toUTCDateTimeString(endDate),
-        category,
-        department,
-        price_type: priceType, // ✅ Added
-      };
+  try {
+    setLoading(true);
 
-      console.log("📤 Updating booking payload:", payload);
-      await axios.put(`${API_URL}/bookings/${editId}`, payload);
-      setMessage("✅ Booking updated successfully");
-      fetchBookings();
-      resetForm();
-    } catch (err) {
-      console.error("Error updating booking:", err);
-      setMessage(err.response?.data?.detail || "❌ Error updating booking");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const params = {
+      start_date: toUTCDateTimeString(startDate),
+      end_date: toUTCDateTimeString(endDate),
+      category,
+      department,
+      price_type: priceType,
+    };
+
+    console.log("📤 Updating booking with query params:", params);
+
+    await axios.put(`${API_URL}/bookings/${editId}`, null, { params });
+
+    setMessage("✅ Booking updated successfully");
+    fetchBookings();
+    resetForm();
+  } catch (err) {
+    console.error("Error updating booking:", err);
+    setMessage(err.response?.data?.detail || "❌ Error updating booking");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const deleteBooking = async (bookingId) => {
     if (!window.confirm("Are you sure you want to delete this booking?")) return;
