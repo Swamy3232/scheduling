@@ -290,9 +290,10 @@ export default function ProfessionalBookingForm() {
 
             {/* Only manpower linked to selected service */}
             {serviceManpower.map((mp) => (
-              <option key={mp.manpower_id} value={mp.manpower_id}>
-                {mp.manpower_name}
-              </option>
+             <option key={mp.manpower_id} value={mp.manpower_id}>
+              {mp.name}
+            </option>
+
             ))}
           </select>
 
