@@ -76,7 +76,8 @@ export default function ProfessionalBookingForm() {
     // Fetch manpower linked to selected service
     const load = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/service_manpower/${selectedService}`);
+        const res = await axios.get(`${API_URL}/bookings/api/service_manpower/${selectedService}`);
+
         setServiceManpower(res.data); // [{ manpower_id, manpower_name }]
       } catch (err) {
         console.log(err);
@@ -97,12 +98,12 @@ export default function ProfessionalBookingForm() {
     const checkAvailability = async () => {
       try {
         const res = await axios.get(`${API_URL}/bookings/free_manpower`, {
-          params: {
-            service_id: selectedService,
-            start_date: new Date(startDate).toISOString(),
-            end_date: new Date(endDate).toISOString(),
-          },
-        });
+        params: {
+          start_date: startDate,   // ISO string
+          end_date: endDate,       // ISO string
+          service_id: selectedService, // optional
+        },
+      });
 
         setFreeManpower(res.data.free); // array of free manpower
       } catch (err) {
