@@ -9,7 +9,7 @@ export default function Report() {
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
-  const [prices, setPrices] = useState({}); // store rates keyed by service_id
+  const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
 
   // Fetch bookings
@@ -23,15 +23,20 @@ export default function Report() {
     }
   };
 
-  // Fetch service prices
+  // Fetch service prices and build lookup map
   const fetchPrices = async () => {
     try {
       const res = await axios.get(PRICE_API);
       const priceMap = {};
-      // Store price keyed by service_id, use first matching rate
+
       res.data.forEach((p) => {
-        priceMap[p.service_id] = p.rate;
+        if (!priceMap[p.service_id]) priceMap[p.service_id] = {};
+        if (!priceMap[p.service_id][p.category])
+          priceMap[p.service_id][p.category] = {};
+
+        priceMap[p.service_id][p.category][p.price_type] = p.rate;
       });
+
       setPrices(priceMap);
     } catch (err) {
       console.error("Error fetching service prices:", err);
@@ -40,26 +45,54 @@ export default function Report() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchBookings(), fetchPrices()]).then(() => setLoading(false));
+    Promise.all([fetchBookings(), fetchPrices()]).then(() =>
+      setLoading(false)
+    );
   }, []);
 
-  // Filter bookings
+  // Apply filters
   useEffect(() => {
     let filtered = bookings;
     if (category) filtered = filtered.filter((b) => b.category === category);
-    if (department) filtered = filtered.filter((b) => b.department === department);
+    if (department)
+      filtered = filtered.filter((b) => b.department === department);
+
     setFilteredBookings(filtered);
   }, [category, department, bookings]);
 
-  const uniqueCategories = [...new Set(bookings.map((b) => b.category).filter(Boolean))];
-  const uniqueDepartments = [...new Set(bookings.map((b) => b.department).filter(Boolean))];
+  const uniqueCategories = [
+    ...new Set(bookings.map((b) => b.category).filter(Boolean)),
+  ];
+  const uniqueDepartments = [
+    ...new Set(bookings.map((b) => b.department).filter(Boolean)),
+  ];
 
-  // Compute booking cost using service_id lookup
+  // Price calculation using category + price_type
   const getBookingCost = (booking) => {
-    const rate = prices[booking.service_id] || 0; // fallback 0 if missing
+    const rate =
+      prices?.[booking.service_id]?.[booking.category]?.[
+        booking.price_type
+      ] || 0;
+
     const start = new Date(booking.start_date);
     const end = new Date(booking.end_date);
-    const hours = Math.abs(end - start) / 36e5; // convert ms to hours
+    const diffMs = Math.abs(end - start);
+
+    const hours = diffMs / 36e5;
+    const days = hours / 24;
+
+    if (booking.price_type === "per_hour") {
+      return parseFloat((hours * rate).toFixed(2));
+    }
+
+    if (booking.price_type === "per_day") {
+      return parseFloat((days * rate).toFixed(2));
+    }
+
+    if (booking.price_type === "per_sample") {
+      return parseFloat(rate.toFixed(2));
+    }
+
     return parseFloat((hours * rate).toFixed(2));
   };
 
@@ -74,17 +107,18 @@ export default function Report() {
     const tableRows = filteredBookings
       .map((b) => {
         const cost = getBookingCost(b);
-        return `<tr>
-          <td>${b.booking_id}</td>
-          <td>${b.service_name}</td>
-          <td>${b.name}</td>
-          <td>${b.category || "-"}</td>
-          <td>${b.department || "-"}</td>
-          <td>${new Date(b.start_date).toLocaleString()}</td>
-          <td>${new Date(b.end_date).toLocaleString()}</td>
-          <td>${b.price_type}</td>
-          <td>₹${cost}</td>
-        </tr>`;
+        return `
+          <tr>
+            <td>${b.booking_id}</td>
+            <td>${b.service_name}</td>
+            <td>${b.manpower_name}</td>
+            <td>${b.category || "-"}</td>
+            <td>${b.department || "-"}</td>
+            <td>${new Date(b.start_date).toLocaleString()}</td>
+            <td>${new Date(b.end_date).toLocaleString()}</td>
+            <td>${b.price_type}</td>
+            <td>₹${cost}</td>
+          </tr>`;
       })
       .join("");
 
@@ -127,6 +161,7 @@ export default function Report() {
         </body>
       </html>
     `);
+
     printWindow.document.close();
     printWindow.print();
   };
@@ -135,12 +170,16 @@ export default function Report() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">📋 Booking Report</h1>
+      <h1 className="text-2xl font-semibold text-gray-800 mb-6">
+        📋 Booking Report
+      </h1>
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
           <select
             className="w-full border rounded-lg p-2 bg-white"
             value={category}
@@ -154,7 +193,9 @@ export default function Report() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Department
+          </label>
           <select
             className="w-full border rounded-lg p-2 bg-white"
             value={department}
@@ -196,17 +237,25 @@ export default function Report() {
               <th className="p-3 border">Cost (₹)</th>
             </tr>
           </thead>
+
           <tbody>
             {filteredBookings.length > 0 ? (
               filteredBookings.map((b) => (
-                <tr key={b.booking_id} className="border-t hover:bg-gray-50 text-center">
+                <tr
+                  key={b.booking_id}
+                  className="border-t hover:bg-gray-50 text-center"
+                >
                   <td className="p-2 border">{b.booking_id}</td>
                   <td className="p-2 border">{b.service_name}</td>
-                  <td className="p-2 border">{b.name}</td>
+                  <td className="p-2 border">{b.manpower_name}</td>
                   <td className="p-2 border">{b.category || "-"}</td>
                   <td className="p-2 border">{b.department || "-"}</td>
-                  <td className="p-2 border">{new Date(b.start_date).toLocaleString()}</td>
-                  <td className="p-2 border">{new Date(b.end_date).toLocaleString()}</td>
+                  <td className="p-2 border">
+                    {new Date(b.start_date).toLocaleString()}
+                  </td>
+                  <td className="p-2 border">
+                    {new Date(b.end_date).toLocaleString()}
+                  </td>
                   <td className="p-2 border">{b.price_type}</td>
                   <td className="p-2 border">₹{getBookingCost(b)}</td>
                 </tr>
@@ -218,10 +267,15 @@ export default function Report() {
                 </td>
               </tr>
             )}
+
             {filteredBookings.length > 0 && (
               <tr className="bg-gray-100 font-semibold">
-                <td colSpan="8" className="p-2 border text-right">Total</td>
-                <td className="p-2 border text-center">₹{totalAllBookings.toFixed(2)}</td>
+                <td colSpan="8" className="p-2 border text-right">
+                  Total
+                </td>
+                <td className="p-2 border text-center">
+                  ₹{totalAllBookings.toFixed(2)}
+                </td>
               </tr>
             )}
           </tbody>
