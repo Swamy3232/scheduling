@@ -56,7 +56,7 @@ const Navbar = () => {
         <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate("/")}>
           <img src={logo} alt="CMTI Logo" className="h-14 w-14 object-contain" />
           <span className="text-2xl md:text-3xl font-bold tracking-tight text-gray-800">
-            CMTI Scheduling System
+            AMC Scheduling System
           </span>
         </div>
 

@@ -51,11 +51,12 @@ const WorkerDashboard = () => {
       // Search filter
       if (filters.search) {
         const searchTerm = filters.search.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           (booking.service_name?.toLowerCase().includes(searchTerm)) ||
           (booking.manpower_name?.toLowerCase().includes(searchTerm)) ||
-          (booking.location?.toLowerCase().includes(searchTerm))
+          (booking.location?.toLowerCase().includes(searchTerm)) ||
           (booking.service_id?.toString().toLowerCase().includes(searchTerm));
+
         
         if (!matchesSearch) return false;
       }

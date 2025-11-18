@@ -321,6 +321,30 @@ export default function ProfessionalBookingForm() {
       showMessage("❌ Error deleting booking. Please try again.", "error");
     }
   };
+  const Popup = ({ message, onClose }) => {
+  if (!message.text) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-80 text-center">
+        <p
+          className={`text-lg font-semibold ${
+            message.type === "success" ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message.text}
+        </p>
+
+        <button
+          onClick={onClose}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  );
+};
 
   const resetForm = () => {
     setSelectedService("");
@@ -375,6 +399,8 @@ export default function ProfessionalBookingForm() {
             </div>
           </div>
         </div>
+        <Popup message={message} onClose={() => setMessage({ text: "", type: "" })} />
+
       </div>
 
       <div className="max-w-7xl mx-auto">
