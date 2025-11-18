@@ -456,6 +456,7 @@ export default function ProfessionalBookingForm() {
                     <option value="">Select Category</option>
                     <option value="academic">Academic</option>
                     <option value="industrial">Industrial</option>
+                    <option value="industrial">Inter Department</option>
                   </select>
                   {errors.category && (
                     <p className="text-red-600 text-sm mt-1">{errors.category}</p>
