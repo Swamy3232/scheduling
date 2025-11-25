@@ -12,7 +12,7 @@ const WorkerDashboard = () => {
   const [editingBooking, setEditingBooking] = useState(null);
   const [editForm, setEditForm] = useState({ 
     remarks: "",
-    remarks_update: "waiting" // Default value
+    remarks_update: "waiting"
   });
   const [isEditing, setIsEditing] = useState(false);
   const [viewingRemarks, setViewingRemarks] = useState(null);
@@ -21,7 +21,6 @@ const WorkerDashboard = () => {
     fetchBookings();
   }, []);
 
-  // Fetch bookings (with console logs)
   const fetchBookings = async () => {
     console.log("[fetchBookings] start");
     setLoading(true);
@@ -112,9 +111,13 @@ const WorkerDashboard = () => {
   const handleEditClick = (booking) => {
     console.log("[handleEditClick] opening modal for booking:", booking);
     setEditingBooking(booking);
+    
+    // Automatically change from "accepted" to "waiting" when editing
+    const newRemarksUpdate = booking.remarks_update === "accepted" ? "waiting" : (booking.remarks_update || "waiting");
+    
     setEditForm({ 
       remarks: booking.remarks || "",
-      remarks_update: booking.remarks_update || "waiting" // Set current value or default to "waiting"
+      remarks_update: newRemarksUpdate
     });
     setIsEditing(false);
   };
@@ -124,7 +127,6 @@ const WorkerDashboard = () => {
     setViewingRemarks(booking);
   };
 
-  // Submit updated remarks — with robust logging and finally resetting isEditing
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editingBooking) {
@@ -209,8 +211,8 @@ const WorkerDashboard = () => {
   const getRemarksUpdateBadge = (remarks_update) => {
     const cfg = {
       waiting: { color: "yellow", text: "Waiting" },
-       accepted: { color: "green", text: "Accepted" },
-       rejected: { color: "red", text: "Rejected" },
+      accepted: { color: "green", text: "Accepted" },
+      rejected: { color: "red", text: "Rejected" },
     };
 
     const c = cfg[remarks_update] || cfg.waiting;
@@ -375,18 +377,22 @@ const EditModal = ({
       </h3>
 
       <form onSubmit={handleEditSubmit}>
-        {/* Remarks Update Dropdown */}
+        {/* Remarks Update Dropdown - Read-only since it auto-changes */}
         <div className="mb-4">
           <label className="text-sm text-gray-700">Status</label>
           <select
             value={editForm.remarks_update}
             onChange={(e) => setEditForm(prev => ({ ...prev, remarks_update: e.target.value }))}
-            className="w-full mt-1 p-2 border rounded"
+            className="w-full mt-1 p-2 border rounded bg-gray-50"
+            disabled
           >
             <option value="waiting">Waiting</option>
-            {/* <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option> */}
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
           </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Status automatically changes to "Waiting" when remarks are edited
+          </p>
         </div>
 
         {/* Remarks Textarea */}
