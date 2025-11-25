@@ -9,6 +9,9 @@ export default function Report() {
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
+  const [dateFilter, setDateFilter] = useState("all"); // "all", "month", "date"
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
@@ -69,6 +72,24 @@ export default function Report() {
     }
   };
 
+  // Get unique months from bookings data
+  const getUniqueMonths = () => {
+    const months = bookings.map(booking => {
+      const date = new Date(booking.start_date);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    });
+    return [...new Set(months)].sort().reverse();
+  };
+
+  // Get unique dates from bookings data
+  const getUniqueDates = () => {
+    const dates = bookings.map(booking => {
+      const date = new Date(booking.start_date);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    });
+    return [...new Set(dates)].sort().reverse();
+  };
+
   // Apply filters
   useEffect(() => {
     let filtered = bookings;
@@ -88,8 +109,25 @@ export default function Report() {
       }
     }
 
+    // Date filters
+    if (dateFilter === "month" && selectedMonth) {
+      filtered = filtered.filter((b) => {
+        const bookingDate = new Date(b.start_date);
+        const bookingMonth = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
+        return bookingMonth === selectedMonth;
+      });
+    }
+
+    if (dateFilter === "date" && selectedDate) {
+      filtered = filtered.filter((b) => {
+        const bookingDate = new Date(b.start_date);
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+        return bookingDateStr === selectedDate;
+      });
+    }
+
     setFilteredBookings(filtered);
-  }, [category, department, bookings]);
+  }, [category, department, dateFilter, selectedMonth, selectedDate, bookings]);
 
   const uniqueCategories = [
     ...new Set(bookings.map((b) => b.category).filter(Boolean)),
@@ -154,6 +192,13 @@ export default function Report() {
   const completedBookingsCount = getBookingsByStatus("completed");
   const ongoingBookingsCount = getBookingsByStatus("ongoing");
   const upcomingBookingsCount = getBookingsByStatus("upcoming");
+
+  // Reset date filters
+  const resetDateFilters = () => {
+    setDateFilter("all");
+    setSelectedMonth("");
+    setSelectedDate("");
+  };
 
   // Export to CSV
   const exportToCSV = () => {
@@ -235,6 +280,19 @@ export default function Report() {
       })
       .join("");
 
+    // Build filter info for print
+    const filterInfo = [];
+    if (category) filterInfo.push(`Category: ${category}`);
+    if (department) filterInfo.push(`Department: ${department === "INTER_DEPARTMENT" ? "Inter Department (All CMTI)" : department}`);
+    if (dateFilter === "month" && selectedMonth) {
+      const [year, month] = selectedMonth.split('-');
+      const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+      filterInfo.push(`Month: ${monthName} ${year}`);
+    }
+    if (dateFilter === "date" && selectedDate) {
+      filterInfo.push(`Date: ${new Date(selectedDate).toLocaleDateString()}`);
+    }
+
     printWindow.document.write(`
       <html>
         <head>
@@ -252,10 +310,7 @@ export default function Report() {
             <h1 class="text-2xl font-bold text-gray-800">Booking Report</h1>
             <p class="text-gray-600">Generated on ${new Date().toLocaleDateString()}</p>
             <p class="text-sm text-gray-500 mt-1">Costs shown only for completed bookings</p>
-            ${category || department ? `<p class="text-sm text-gray-500 mt-1">Filters: ${[
-                category, 
-                department === "INTER_DEPARTMENT" ? "Inter Department (All CMTI)" : department
-              ].filter(Boolean).join(", ")}</p>` : ""}
+            ${filterInfo.length > 0 ? `<p class="text-sm text-gray-500 mt-1">Filters: ${filterInfo.join(", ")}</p>` : ""}
           </div>
           <table class="min-w-full border-collapse border border-gray-300">
             <thead>
@@ -335,7 +390,7 @@ export default function Report() {
             <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category
@@ -373,15 +428,82 @@ export default function Report() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date Filter
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  value={dateFilter}
+                  onChange={(e) => {
+                    setDateFilter(e.target.value);
+                    setSelectedMonth("");
+                    setSelectedDate("");
+                  }}
+                >
+                  <option value="all">All Dates</option>
+                  <option value="month">By Month</option>
+                  <option value="date">By Date</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Date-specific filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {dateFilter === "month" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Month
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                  >
+                    <option value="">Select a month</option>
+                    {getUniqueMonths().map((month) => {
+                      const [year, monthNum] = month.split('-');
+                      const monthName = new Date(year, monthNum - 1).toLocaleString('default', { month: 'long' });
+                      return (
+                        <option key={month} value={month}>
+                          {monthName} {year}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {dateFilter === "date" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Date
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                  >
+                    <option value="">Select a date</option>
+                    {getUniqueDates().map((date) => (
+                      <option key={date} value={date}>
+                        {new Date(date).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="flex items-end space-x-3">
                 <button
                   onClick={() => {
                     setCategory("");
                     setDepartment("");
+                    resetDateFilters();
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
                 >
-                  Reset Filters
+                  Reset All Filters
                 </button>
               </div>
             </div>

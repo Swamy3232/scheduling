@@ -84,7 +84,47 @@ export default function Manpower() {
     }
   };
 
-  const filteredManpower = manpower.filter((mp) =>
+  // Improved grouping logic
+  const groupedManpower = manpower.reduce((acc, mp) => {
+    // Normalize the name: trim spaces, convert to lowercase for comparison
+    const normalizedName = mp.name.trim().toLowerCase();
+    
+    // Find existing person by normalized name
+    const existingIndex = acc.findIndex(item => 
+      item.normalizedName === normalizedName
+    );
+    
+    if (existingIndex !== -1) {
+      // Add service to existing person
+      acc[existingIndex].services.push({
+        service_id: mp.service_id,
+        service_name: services.find(s => s.service_id === mp.service_id)?.service_name || "Unknown",
+        manpower_id: mp.manpower_id,
+        role: mp.role
+      });
+    } else {
+      // Create new person entry
+      acc.push({
+        name: mp.name.trim(), // Store trimmed name
+        normalizedName: normalizedName, // For consistent grouping
+        contact: mp.contact,
+        services: [{
+          service_id: mp.service_id,
+          service_name: services.find(s => s.service_id === mp.service_id)?.service_name || "Unknown",
+          manpower_id: mp.manpower_id,
+          role: mp.role
+        }]
+      });
+    }
+    return acc;
+  }, []);
+
+  // Sort grouped manpower by name
+  const sortedManpower = groupedManpower.sort((a, b) => 
+    a.name.localeCompare(b.name)
+  );
+
+  const filteredManpower = sortedManpower.filter((mp) =>
     mp.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -188,7 +228,7 @@ export default function Manpower() {
       <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
         <div className="flex flex-col md:flex-row items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
-            📋 Manpower List
+            📋 Manpower List (Grouped by Person)
           </h2>
 
           <div className="relative w-full md:w-1/3">
@@ -217,18 +257,16 @@ export default function Manpower() {
             <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
               <thead className="bg-blue-50">
                 <tr className="text-gray-700 text-sm uppercase tracking-wide">
-                  <th className="border p-3 text-left">ID</th>
-                  <th className="border p-3 text-left">Service</th>
                   <th className="border p-3 text-left">Name</th>
-                  <th className="border p-3 text-left">Role</th>
                   <th className="border p-3 text-left">Contact</th>
+                  <th className="border p-3 text-left">Services & Roles</th>
                   <th className="border p-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredManpower.map((mp, idx) => (
+                {filteredManpower.map((person, idx) => (
                   <motion.tr
-                    key={mp.manpower_id}
+                    key={`${person.name}-${idx}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
@@ -236,29 +274,45 @@ export default function Manpower() {
                       idx % 2 === 0 ? "bg-gray-50" : "bg-white"
                     }`}
                   >
-                    <td className="border p-3">{mp.manpower_id}</td>
+                    <td className="border p-3 font-medium">{person.name}</td>
+                    <td className="border p-3">{person.contact || "-"}</td>
                     <td className="border p-3">
-                      {
-                        services.find((s) => s.service_id === mp.service_id)
-                          ?.service_name || "—"
-                      }
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {person.services.map((service, serviceIdx) => (
+                          <div key={serviceIdx} className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded">
+                            <span className="font-medium">{service.service_name}</span>
+                            <span className="text-sm text-gray-600 ml-2">
+                              {service.role ? `(${service.role})` : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </td>
-                    <td className="border p-3">{mp.name}</td>
-                    <td className="border p-3">{mp.role || "-"}</td>
-                    <td className="border p-3">{mp.contact || "-"}</td>
-                    <td className="border p-3 text-center space-x-3">
-                      <button
-                        onClick={() => handleEdit(mp)}
-                        className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1"
-                      >
-                        <Edit className="w-4 h-4" /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(mp.manpower_id)}
-                        className="text-red-600 hover:text-red-800 font-medium inline-flex items-center gap-1"
-                      >
-                        <Trash2 className="w-4 h-4" /> Delete
-                      </button>
+                    <td className="border p-3 text-center">
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {person.services.map((service, serviceIdx) => (
+                          <div key={serviceIdx} className="flex justify-center space-x-2 py-1">
+                            <button
+                              onClick={() => handleEdit({
+                                manpower_id: service.manpower_id,
+                                service_id: service.service_id,
+                                name: person.name,
+                                role: service.role,
+                                contact: person.contact
+                              })}
+                              className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 text-sm px-2 py-1 border border-blue-200 rounded"
+                            >
+                              <Edit className="w-3 h-3" /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(service.manpower_id)}
+                              className="text-red-600 hover:text-red-800 font-medium inline-flex items-center gap-1 text-sm px-2 py-1 border border-red-200 rounded"
+                            >
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
