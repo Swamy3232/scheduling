@@ -41,7 +41,7 @@ const Navbar = () => {
     { name: "Service", path: "/service", roles: ["admin"] },
     { name: "Manpower", path: "/manpower", roles: ["admin"] },
     { name: "Job Assignment", path: "/slot", roles: ["admin", "worker"] },
-    { name: "Report", path: "/report", roles: ["admin"] },
+    { name: "Cost Wise Report", path: "/report", roles: ["admin"] },
     { name: "Serive Cost Setting",path: "/servicecost", roles: ["admin"] },
   ];
 

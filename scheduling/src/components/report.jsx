@@ -13,6 +13,9 @@ export default function Report() {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
 
+  // CMTI departments (all departments except 'OTHER')
+  const cmtiDepartments = ["SMPM", "CMF", "MNTM", "ASMP", "AEAMT", "SVT", "PDE", "PAT"];
+
   // Fetch bookings
   const fetchBookings = async () => {
     try {
@@ -54,9 +57,21 @@ export default function Report() {
   // Apply filters
   useEffect(() => {
     let filtered = bookings;
+    
+    // Category filter
     if (category) filtered = filtered.filter((b) => b.category === category);
-    if (department)
-      filtered = filtered.filter((b) => b.department === department);
+    
+    // Department filter
+    if (department) {
+      if (department === "INTER_DEPARTMENT") {
+        // Show all CMTI departments (exclude 'OTHER')
+        filtered = filtered.filter((b) => 
+          b.department && cmtiDepartments.includes(b.department)
+        );
+      } else {
+        filtered = filtered.filter((b) => b.department === department);
+      }
+    }
 
     setFilteredBookings(filtered);
   }, [category, department, bookings]);
@@ -64,7 +79,9 @@ export default function Report() {
   const uniqueCategories = [
     ...new Set(bookings.map((b) => b.category).filter(Boolean)),
   ];
-  const uniqueDepartments = [
+  
+  // Get unique departments from bookings data
+  const uniqueDepartmentsFromData = [
     ...new Set(bookings.map((b) => b.department).filter(Boolean)),
   ];
 
@@ -184,7 +201,10 @@ export default function Report() {
           <div class="mb-6 border-b pb-4">
             <h1 class="text-2xl font-bold text-gray-800">Booking Report</h1>
             <p class="text-gray-600">Generated on ${new Date().toLocaleDateString()}</p>
-            ${category || department ? `<p class="text-sm text-gray-500 mt-1">Filters: ${[category, department].filter(Boolean).join(", ")}</p>` : ""}
+            ${category || department ? `<p class="text-sm text-gray-500 mt-1">Filters: ${[
+                category, 
+                department === "INTER_DEPARTMENT" ? "Inter Department (All CMTI)" : department
+              ].filter(Boolean).join(", ")}</p>` : ""}
           </div>
           <table class="min-w-full border-collapse border border-gray-300">
             <thead>
@@ -283,7 +303,8 @@ export default function Report() {
                   onChange={(e) => setDepartment(e.target.value)}
                 >
                   <option value="">All Departments</option>
-                  {uniqueDepartments.map((dept) => (
+                  <option value="INTER_DEPARTMENT">Inter Department (All CMTI)</option>
+                  {uniqueDepartmentsFromData.map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
                     </option>
@@ -359,7 +380,7 @@ export default function Report() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Departments</p>
-                <p className="text-2xl font-semibold text-gray-900">{uniqueDepartments.length}</p>
+                <p className="text-2xl font-semibold text-gray-900">{uniqueDepartmentsFromData.length}</p>
               </div>
             </div>
           </div>

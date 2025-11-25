@@ -21,6 +21,8 @@ const Booking = ({ currentUser, editId = null }) => {
     price_type: "",
     rate: "",
     remarks: "",
+    file: null, // PDF
+    file_url: "", // existing PDF link (edit mode)
   });
 
   const [message, setMessage] = useState(null);
@@ -54,9 +56,11 @@ const Booking = ({ currentUser, editId = null }) => {
         price_type: b.price_type,
         rate: b.rate,
         remarks: b.remarks,
+        file: null,
+        file_url: b.file_url || "",
       });
 
-      setAvailable(true); // allow editing without rechecking
+      setAvailable(true);
     } catch (err) {
       setMessage({ type: "error", text: "Failed to load booking details." });
     }
@@ -102,45 +106,44 @@ const Booking = ({ currentUser, editId = null }) => {
   };
 
   // -----------------------------------------------------
-  // 🔵 CREATE OR UPDATE BOOKING
+  // 🔵 CREATE OR UPDATE BOOKING (WITH FILE)
   // -----------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const payload = {
-      service_id: form.service_id,
-      service_name: form.service_name,
-      start_date: form.start_date,
-      end_date: form.end_date,
-      customer: form.customer,
-      category: form.category,
-      department: form.department,
-      price_type: form.price_type,
-      rate: form.rate,
-      remarks: form.remarks,
-    };
+    const formData = new FormData();
+
+    Object.keys(form).forEach((key) => {
+      if (key !== "file" && key !== "file_url") {
+        formData.append(key, form[key]);
+      }
+    });
+
+    if (form.file) {
+      formData.append("file", form.file);
+    }
 
     try {
       let res;
 
       if (isEdit) {
-        // -----------------------------------
-        // 🔵 PUT — Update Booking
-        // -----------------------------------
         res = await axios.put(
           `https://manpower.cmti.online/bookings/${editId}`,
-          payload,
-          { params: { assigned_by: currentUser?.username || "system" } }
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+            params: { assigned_by: currentUser?.username || "system" },
+          }
         );
       } else {
-        // -----------------------------------
-        // 🟢 POST — Create Booking
-        // -----------------------------------
         res = await axios.post(
           "https://manpower.cmti.online/bookings/",
-          payload,
-          { params: { assigned_by: currentUser?.username || "system" } }
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+            params: { assigned_by: currentUser?.username || "system" },
+          }
         );
       }
 
@@ -163,6 +166,8 @@ const Booking = ({ currentUser, editId = null }) => {
           price_type: "",
           rate: "",
           remarks: "",
+          file: null,
+          file_url: "",
         });
         setAvailable(false);
       }
@@ -267,7 +272,7 @@ const Booking = ({ currentUser, editId = null }) => {
             />
           </div>
 
-          {/* EXTRA FIELDS */}
+          {/* FIELDS GRID */}
           <div className="grid grid-cols-2 gap-4">
             <input
               name="category"
@@ -310,6 +315,35 @@ const Booking = ({ currentUser, editId = null }) => {
             placeholder="Remarks"
             className="w-full border border-gray-300 rounded-xl p-3"
           />
+
+          {/* ----------------------- */}
+          {/* 📄 PDF FILE UPLOAD      */}
+          {/* ----------------------- */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Upload PDF (optional)
+            </label>
+
+            <input
+              type="file"
+              name="file"
+              accept="application/pdf"
+              onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
+              className="w-full border border-gray-300 rounded-xl p-3"
+            />
+
+            {/* Show existing file in edit */}
+            {isEdit && form.file_url && (
+              <a
+                href={form.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline mt-2 block"
+              >
+                View Existing PDF
+              </a>
+            )}
+          </div>
 
           {/* BUTTON */}
           <button

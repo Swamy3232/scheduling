@@ -738,89 +738,107 @@ export default function ProfessionalBookingForm() {
               </div>
               
               <div className="overflow-x-auto max-h-96">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Booking ID
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Service
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Manpower
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Time Period
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredBookings.map((b) => (
-                      <tr key={b.booking_id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          #{b.booking_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {b.service_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {b.manpower_name || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          <div>{formatLocalDateTime(b.start_date)}</div>
-                          <div className="text-gray-400">to</div>
-                          <div>{formatLocalDateTime(b.end_date)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(b)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-3">
-                            <button
-                              onClick={() => handleEdit(b)}
-                              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteBooking(b.booking_id)}
-                              className="text-red-600 hover:text-red-800 font-medium transition-colors"
-                            >
-                              Delete
-                            </button>
-                            <button
-                              onClick={() => viewBookingDetails(b)}
-                              className="text-gray-600 hover:text-gray-800 font-medium transition-colors"
-                            >
-                              View
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredBookings.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-6 py-12 text-center text-gray-500 text-sm"
-                        >
-                          {bookings.length === 0 
-                            ? "No bookings found. Create your first booking above."
-                            : "No bookings match your filters. Try adjusting your search criteria."
-                          }
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+  <table className="w-full">
+    <thead className="bg-gray-50 sticky top-0">
+      <tr>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Booking ID
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Service
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Manpower
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Department
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Category
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Price Type
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Time Period
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Status
+        </th>
+        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Actions
+        </th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {filteredBookings.map((b) => (
+        <tr key={b.booking_id} className="hover:bg-gray-50 transition-colors">
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            #{b.booking_id}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+            {b.service_name}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+            {b.manpower_name || "-"}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+            {b.department || "-"}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">
+            {b.category || "-"}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+            {b.price_type ? b.price_type.replace('_', ' ') : "-"}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+            <div>{formatLocalDateTime(b.start_date)}</div>
+            <div className="text-gray-400">to</div>
+            <div>{formatLocalDateTime(b.end_date)}</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            {getStatusBadge(b)}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <div className="flex space-x-3">
+              <button
+                onClick={() => handleEdit(b)}
+                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => deleteBooking(b.booking_id)}
+                className="text-red-600 hover:text-red-800 font-medium transition-colors"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => viewBookingDetails(b)}
+                className="text-gray-600 hover:text-gray-800 font-medium transition-colors"
+              >
+                View
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+      {filteredBookings.length === 0 && (
+        <tr>
+          <td
+            colSpan={9} // Updated colSpan from 6 to 9
+            className="px-6 py-12 text-center text-gray-500 text-sm"
+          >
+            {bookings.length === 0 
+              ? "No bookings found. Create your first booking above."
+              : "No bookings match your filters. Try adjusting your search criteria."
+            }
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
             </div>
           </div>
 

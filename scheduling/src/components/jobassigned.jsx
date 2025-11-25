@@ -141,7 +141,7 @@ const WorkerDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Worker Dashboard</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Staff Dashboard</h1>
               <p className="mt-1 text-sm text-gray-500">
                 Manage and track your service bookings
               </p>
@@ -270,104 +270,132 @@ const WorkerDashboard = () => {
         </div>
 
         {/* Bookings Table */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Bookings ({filteredBookings.length})
-            </h3>
-          </div>
+        {/* Bookings Table */}
+<div className="bg-white shadow rounded-lg overflow-hidden">
+  <div className="px-6 py-4 border-b border-gray-200">
+    <h3 className="text-lg font-medium text-gray-900">
+      Bookings ({filteredBookings.length})
+    </h3>
+  </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Worker
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Timeline
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredBookings.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center">
-                      <div className="text-gray-500">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="mt-2">No bookings found</p>
-                        <p className="text-sm">Try adjusting your filters</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredBookings.map((booking, index) => {
-                    const status = getStatus(booking.start_date, booking.end_date);
-                    
-                    return (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {booking.service_name || "Unnamed Service"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            ID: {booking.service_id || "N/A"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {booking.manpower_name || "Unassigned"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm">
-                            <div className="text-gray-900">
-                              <strong>Start:</strong>{" "}
-                              {booking.start_date
-                                ? new Date(booking.start_date).toLocaleString("en-IN", {
-                                    dateStyle: "medium",
-                                    timeStyle: "short",
-                                  })
-                                : "Not set"}
-                            </div>
-                            <div className="text-gray-500 mt-1">
-                              <strong>End:</strong>{" "}
-                              {booking.end_date
-                                ? new Date(booking.end_date).toLocaleString("en-IN", {
-                                    dateStyle: "medium",
-                                    timeStyle: "short",
-                                  })
-                                : "Not set"}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStatusBadge(status)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {booking.location || "Not specified"}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Service Details
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Staff
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Department
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Category
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Price Type
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Timeline
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Location
+          </th> */}
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {filteredBookings.length === 0 ? (
+          <tr>
+            <td colSpan="8" className="px-6 py-8 text-center"> {/* Updated colSpan from 5 to 8 */}
+              <div className="text-gray-500">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="mt-2">No bookings found</p>
+                <p className="text-sm">Try adjusting your filters</p>
+              </div>
+            </td>
+          </tr>
+        ) : (
+          filteredBookings.map((booking, index) => {
+            const status = getStatus(booking.start_date, booking.end_date);
+            
+            return (
+              <tr key={index} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="text-sm font-medium text-gray-900">
+                    {booking.service_name || "Unnamed Service"}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    ID: {booking.service_id || "N/A"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {booking.manpower_name || "Unassigned"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {booking.department || "-"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900 capitalize">
+                    {booking.category || "-"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {booking.price_type ? 
+                      booking.price_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) 
+                      : "-"
+                    }
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm">
+                    <div className="text-gray-900">
+                      <strong>Start:</strong>{" "}
+                      {booking.start_date
+                        ? new Date(booking.start_date).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        : "Not set"}
+                    </div>
+                    <div className="text-gray-500 mt-1">
+                      <strong>End:</strong>{" "}
+                      {booking.end_date
+                        ? new Date(booking.end_date).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        : "Not set"}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {getStatusBadge(status)}
+                </td>
+                {/* <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {booking.location || "Not specified"}
+                  </div>
+                </td> */}
+              </tr>
+            );
+          })
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
       </div>
     </div>
   );
