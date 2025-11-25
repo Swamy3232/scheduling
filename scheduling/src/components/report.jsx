@@ -54,6 +54,21 @@ export default function Report() {
     );
   }, []);
 
+  // Calculate status based on current time and end date
+  const calculateStatus = (booking) => {
+    const now = new Date();
+    const startDate = new Date(booking.start_date);
+    const endDate = new Date(booking.end_date);
+
+    if (now < startDate) {
+      return "upcoming";
+    } else if (now >= startDate && now <= endDate) {
+      return "ongoing";
+    } else {
+      return "completed";
+    }
+  };
+
   // Apply filters
   useEffect(() => {
     let filtered = bookings;
@@ -85,8 +100,14 @@ export default function Report() {
     ...new Set(bookings.map((b) => b.department).filter(Boolean)),
   ];
 
-  // Price calculation using category + price_type
+  // Price calculation using category + price_type - only for completed bookings
   const getBookingCost = (booking) => {
+    // Only calculate cost if status is "completed"
+    const status = calculateStatus(booking);
+    if (status !== "completed") {
+      return 0;
+    }
+
     const rate =
       prices?.[booking.service_id]?.[booking.category]?.[
         booking.price_type
@@ -114,10 +135,25 @@ export default function Report() {
     return parseFloat((hours * rate).toFixed(2));
   };
 
+  // Get display cost for UI (shows 0 for non-completed bookings)
+  const getDisplayCost = (booking) => {
+    return calculateStatus(booking) === "completed" ? getBookingCost(booking) : 0;
+  };
+
+  // Total cost only for completed bookings
   const totalAllBookings = filteredBookings.reduce(
     (acc, b) => acc + getBookingCost(b),
     0
   );
+
+  // Count bookings by status for stats
+  const getBookingsByStatus = (status) => {
+    return filteredBookings.filter(b => calculateStatus(b) === status).length;
+  };
+
+  const completedBookingsCount = getBookingsByStatus("completed");
+  const ongoingBookingsCount = getBookingsByStatus("ongoing");
+  const upcomingBookingsCount = getBookingsByStatus("upcoming");
 
   // Export to CSV
   const exportToCSV = () => {
@@ -131,20 +167,26 @@ export default function Report() {
       "Start Date",
       "End Date",
       "Price Type",
+      "Status",
       "Cost (₹)",
     ];
 
-    const csvData = filteredBookings.map((b) => [
-      b.booking_id,
-      b.service_name,
-      b.manpower_name,
-      b.category || "-",
-      b.department || "-",
-      new Date(b.start_date).toLocaleString(),
-      new Date(b.end_date).toLocaleString(),
-      b.price_type,
-      getBookingCost(b),
-    ]);
+    const csvData = filteredBookings.map((b) => {
+      const status = calculateStatus(b);
+      const cost = getBookingCost(b);
+      return [
+        b.booking_id,
+        b.service_name,
+        b.manpower_name,
+        b.category || "-",
+        b.department || "-",
+        new Date(b.start_date).toLocaleString(),
+        new Date(b.end_date).toLocaleString(),
+        b.price_type,
+        status,
+        cost, // This will be 0 for non-completed bookings
+      ];
+    });
 
     const csvContent = [
       headers.join(","),
@@ -170,6 +212,7 @@ export default function Report() {
     const tableRows = filteredBookings
       .map((b) => {
         const cost = getBookingCost(b);
+        const status = calculateStatus(b);
         return `
           <tr>
             <td class="border px-4 py-2">${b.booking_id}</td>
@@ -180,7 +223,14 @@ export default function Report() {
             <td class="border px-4 py-2">${new Date(b.start_date).toLocaleString()}</td>
             <td class="border px-4 py-2">${new Date(b.end_date).toLocaleString()}</td>
             <td class="border px-4 py-2">${b.price_type}</td>
-            <td class="border px-4 py-2">₹${cost}</td>
+            <td class="border px-4 py-2">
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                status === 'completed' ? 'bg-green-100 text-green-800' :
+                status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                'bg-yellow-100 text-yellow-800'
+              }">${status}</span>
+            </td>
+            <td class="border px-4 py-2">${status === 'completed' ? `₹${cost}` : '-'}</td>
           </tr>`;
       })
       .join("");
@@ -201,6 +251,7 @@ export default function Report() {
           <div class="mb-6 border-b pb-4">
             <h1 class="text-2xl font-bold text-gray-800">Booking Report</h1>
             <p class="text-gray-600">Generated on ${new Date().toLocaleDateString()}</p>
+            <p class="text-sm text-gray-500 mt-1">Costs shown only for completed bookings</p>
             ${category || department ? `<p class="text-sm text-gray-500 mt-1">Filters: ${[
                 category, 
                 department === "INTER_DEPARTMENT" ? "Inter Department (All CMTI)" : department
@@ -217,13 +268,14 @@ export default function Report() {
                 <th class="border border-gray-300 px-4 py-2 text-left">Start</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">End</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Price Type</th>
+                <th class="border border-gray-300 px-4 py-2 text-left">Status</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Cost (₹)</th>
               </tr>
             </thead>
             <tbody>
               ${tableRows}
               <tr class="bg-gray-50 font-semibold">
-                <td colspan="8" class="border border-gray-300 px-4 py-2 text-right">Total</td>
+                <td colspan="9" class="border border-gray-300 px-4 py-2 text-right">Total (Completed Bookings)</td>
                 <td class="border border-gray-300 px-4 py-2">₹${totalAllBookings.toFixed(2)}</td>
               </tr>
             </tbody>
@@ -255,11 +307,20 @@ export default function Report() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Booking Reports</h1>
-              <p className="text-gray-600 mt-1">Manage and analyze booking data</p>
+              <p className="text-gray-600 mt-1">Manage and analyze booking data - Costs shown only for completed bookings</p>
             </div>
             <div className="flex items-center space-x-3">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                {filteredBookings.length} bookings
+                {filteredBookings.length} total
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                {completedBookingsCount} completed
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                {upcomingBookingsCount} upcoming
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                {ongoingBookingsCount} ongoing
               </span>
             </div>
           </div>
@@ -347,12 +408,26 @@ export default function Report() {
             <div className="flex items-center">
               <div className="rounded-full bg-green-100 p-3">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Cost</p>
-                <p className="text-2xl font-semibold text-gray-900">₹{totalAllBookings.toFixed(2)}</p>
+                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-2xl font-semibold text-gray-900">{completedBookingsCount}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center">
+              <div className="rounded-full bg-blue-100 p-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Ongoing</p>
+                <p className="text-2xl font-semibold text-gray-900">{ongoingBookingsCount}</p>
               </div>
             </div>
           </div>
@@ -361,26 +436,12 @@ export default function Report() {
             <div className="flex items-center">
               <div className="rounded-full bg-purple-100 p-3">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Categories</p>
-                <p className="text-2xl font-semibold text-gray-900">{uniqueCategories.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="rounded-full bg-orange-100 p-3">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Departments</p>
-                <p className="text-2xl font-semibold text-gray-900">{uniqueDepartmentsFromData.length}</p>
+                <p className="text-sm font-medium text-gray-600">Total Cost</p>
+                <p className="text-2xl font-semibold text-gray-900">₹{totalAllBookings.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -437,45 +498,58 @@ export default function Report() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost (₹)</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredBookings.length > 0 ? (
-                  filteredBookings.map((b) => (
-                    <tr key={b.booking_id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{b.booking_id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{b.service_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{b.manpower_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {b.category || <span className="text-gray-400">-</span>}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {b.department || <span className="text-gray-400">-</span>}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(b.start_date).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(b.end_date).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          b.price_type === 'per_hour' ? 'bg-blue-100 text-blue-800' :
-                          b.price_type === 'per_day' ? 'bg-green-100 text-green-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {b.price_type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        ₹{getBookingCost(b)}
-                      </td>
-                    </tr>
-                  ))
+                  filteredBookings.map((b) => {
+                    const status = calculateStatus(b);
+                    return (
+                      <tr key={b.booking_id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{b.booking_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{b.service_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{b.manpower_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {b.category || <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {b.department || <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(b.start_date).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(b.end_date).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            b.price_type === 'per_hour' ? 'bg-blue-100 text-blue-800' :
+                            b.price_type === 'per_day' ? 'bg-green-100 text-green-800' :
+                            'bg-purple-100 text-purple-800'
+                          }`}>
+                            {b.price_type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            status === 'completed' ? 'bg-green-100 text-green-800' :
+                            status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                          {status === 'completed' ? `₹${getDisplayCost(b)}` : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center">
+                    <td colSpan="10" className="px-6 py-12 text-center">
                       <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
@@ -490,8 +564,8 @@ export default function Report() {
               {filteredBookings.length > 0 && (
                 <tfoot className="bg-gray-50 border-t">
                   <tr>
-                    <td colSpan="8" className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
-                      Total
+                    <td colSpan="9" className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
+                      Total (Completed Bookings)
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">
                       ₹{totalAllBookings.toFixed(2)}

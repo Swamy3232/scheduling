@@ -436,155 +436,175 @@ export default function ProfessionalBookingForm() {
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Service Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Service *
-                  </label>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => {
-                      setSelectedService(e.target.value);
-                      setErrors(prev => ({ ...prev, service: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.service ? "border-red-300 bg-red-50" : "border-gray-300"
-                    } ${editId ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                    disabled={!!editId}
-                  >
-                    <option value="">Select Service</option>
-                    {services.map((s) => (
-                      <option key={s.service_id} value={s.service_id}>
-                        {s.service_name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.service && (
-                    <p className="text-red-600 text-sm mt-1">{errors.service}</p>
-                  )}
-                </div>
+  {/* Service Selection */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Service *
+    </label>
+    <select
+      value={selectedService}
+      onChange={(e) => {
+        setSelectedService(e.target.value);
+        setErrors(prev => ({ ...prev, service: "" }));
+      }}
+      className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+        errors.service ? "border-red-300 bg-red-50" : "border-gray-300"
+      } ${editId ? "bg-gray-100 cursor-not-allowed" : ""}`}
+      disabled={!!editId}
+    >
+      <option value="">Select Service</option>
+      {services.map((s) => (
+        <option key={s.service_id} value={s.service_id}>
+          {s.service_name}
+        </option>
+      ))}
+    </select>
+    {errors.service && (
+      <p className="text-red-600 text-sm mt-1">{errors.service}</p>
+    )}
+  </div>
 
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setErrors(prev => ({ ...prev, category: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.category ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                  >
-                    <option value="">Select Category</option>
-                    <option value="academic">Academic</option>
-                    <option value="industrial">Industrial</option>
-                    <option value="industrial">Inter Department</option>
-                  </select>
-                  {errors.category && (
-                    <p className="text-red-600 text-sm mt-1">{errors.category}</p>
-                  )}
-                </div>
+  {/* Category */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Category *
+    </label>
+    <select
+      value={category}
+      onChange={(e) => {
+        setCategory(e.target.value);
+        setErrors(prev => ({ ...prev, category: "" }));
+      }}
+      className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+        errors.category ? "border-red-300 bg-red-50" : "border-gray-300"
+      }`}
+    >
+      <option value="">Select Category</option>
+      <option value="academic">Academic</option>
+      <option value="industrial">Industrial</option>
+      <option value="inter-department">Inter Department</option>
+    </select>
+    {errors.category && (
+      <p className="text-red-600 text-sm mt-1">{errors.category}</p>
+    )}
+  </div>
 
-                {/* Department */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department *
-                  </label>
-                  <select
-                    value={department}
-                    onChange={(e) => {
-                      setDepartment(e.target.value);
-                      setErrors(prev => ({ ...prev, department: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.department ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                  >
-                    <option value="">Select Department</option>
-                    <option value="SMPM">SMPM</option>
-                    <option value="CMF">CMF</option>
-                    <option value="MNTM">MNTM</option>
-                    <option value="ASMP">ASMP</option>
-                    <option value="AEAMT">AEAMT</option>
-                    <option value="SVT">SVT</option>
-                    <option value="PDE">PDE</option>
-                    <option value="PAT">PAT</option>
-                    <option value="OTHER">OTHER</option>
-                  </select>
-                  {errors.department && (
-                    <p className="text-red-600 text-sm mt-1">{errors.department}</p>
-                  )}
-                </div>
+  {/* Department - Conditionally rendered based on category */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Department *
+    </label>
+    
+    {category === "inter-department" ? (
+      // Dropdown for Inter Department
+      <select
+        value={department}
+        onChange={(e) => {
+          setDepartment(e.target.value);
+          setErrors(prev => ({ ...prev, department: "" }));
+        }}
+        className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+          errors.department ? "border-red-300 bg-red-50" : "border-gray-300"
+        }`}
+      >
+        <option value="">Select Department</option>
+        <option value="SMPM">SMPM</option>
+        <option value="CMF">CMF</option>
+        <option value="MNTM">MNTM</option>
+        <option value="ASMP">ASMP</option>
+        <option value="AEAMT">AEAMT</option>
+        <option value="SVT">SVT</option>
+        <option value="PDE">PDE</option>
+        <option value="PAT">PAT</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    ) : (
+      // Text input for Academic and Industrial
+      <input
+        type="text"
+        value={department}
+        onChange={(e) => {
+          setDepartment(e.target.value);
+          setErrors(prev => ({ ...prev, department: "" }));
+        }}
+        placeholder="Enter department name"
+        className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+          errors.department ? "border-red-300 bg-red-50" : "border-gray-300"
+        }`}
+      />
+    )}
+    
+    {errors.department && (
+      <p className="text-red-600 text-sm mt-1">{errors.department}</p>
+    )}
+  </div>
 
-                {/* Price Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price Type *
-                  </label>
-                  <select
-                    value={priceType}
-                    onChange={(e) => {
-                      setPriceType(e.target.value);
-                      setErrors(prev => ({ ...prev, priceType: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.priceType ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                  >
-                    <option value="">Select Price Type</option>
-                    <option value="per_hour">Per Hour</option>
-                    <option value="per_sample">Per Sample</option>
-                  </select>
-                  {errors.priceType && (
-                    <p className="text-red-600 text-sm mt-1">{errors.priceType}</p>
-                  )}
-                </div>
+  {/* Price Type */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Price Type *
+    </label>
+    <select
+      value={priceType}
+      onChange={(e) => {
+        setPriceType(e.target.value);
+        setErrors(prev => ({ ...prev, priceType: "" }));
+      }}
+      className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+        errors.priceType ? "border-red-300 bg-red-50" : "border-gray-300"
+      }`}
+    >
+      <option value="">Select Price Type</option>
+      <option value="per_hour">Per Hour</option>
+      <option value="per_sample">Per Sample</option>
+    </select>
+    {errors.priceType && (
+      <p className="text-red-600 text-sm mt-1">{errors.priceType}</p>
+    )}
+  </div>
 
-                {/* Start Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date & Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setErrors(prev => ({ ...prev, startDate: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.startDate ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                  />
-                  {errors.startDate && (
-                    <p className="text-red-600 text-sm mt-1">{errors.startDate}</p>
-                  )}
-                </div>
+  {/* Start Date */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Start Date & Time *
+    </label>
+    <input
+      type="datetime-local"
+      value={startDate}
+      onChange={(e) => {
+        setStartDate(e.target.value);
+        setErrors(prev => ({ ...prev, startDate: "" }));
+      }}
+      className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+        errors.startDate ? "border-red-300 bg-red-50" : "border-gray-300"
+      }`}
+    />
+    {errors.startDate && (
+      <p className="text-red-600 text-sm mt-1">{errors.startDate}</p>
+    )}
+  </div>
 
-                {/* End Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date & Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={endDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value);
-                      setErrors(prev => ({ ...prev, endDate: "" }));
-                    }}
-                    className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.endDate ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                  />
-                  {errors.endDate && (
-                    <p className="text-red-600 text-sm mt-1">{errors.endDate}</p>
-                  )}
-                </div>
+  {/* End Date */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      End Date & Time *
+    </label>
+    <input
+      type="datetime-local"
+      value={endDate}
+      onChange={(e) => {
+        setEndDate(e.target.value);
+        setErrors(prev => ({ ...prev, endDate: "" }));
+      }}
+      className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+        errors.endDate ? "border-red-300 bg-red-50" : "border-gray-300"
+      }`}
+    />
+    {errors.endDate && (
+      <p className="text-red-600 text-sm mt-1">{errors.endDate}</p>
+    )}
+  </div>
+
               </div>
 
               {/* Available Manpower */}
