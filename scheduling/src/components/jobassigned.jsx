@@ -576,7 +576,7 @@ const BookingsTable = ({
                   onClick={() => handleEditClick(b)}
                   className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  Edit
+                  Add Remarks
                 </button>
               </td>
             </tr>
