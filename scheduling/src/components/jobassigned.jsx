@@ -112,8 +112,10 @@ const WorkerDashboard = () => {
     console.log("[handleEditClick] opening modal for booking:", booking);
     setEditingBooking(booking);
     
-    // Automatically change from "accepted" to "waiting" when editing
-    const newRemarksUpdate = booking.remarks_update === "accepted" ? "waiting" : (booking.remarks_update || "waiting");
+    // Automatically change from "accepted" OR "rejected" to "waiting" when editing
+    const newRemarksUpdate = (booking.remarks_update === "accepted" || booking.remarks_update === "rejected") 
+      ? "waiting" 
+      : (booking.remarks_update || "waiting");
     
     setEditForm({ 
       remarks: booking.remarks || "",
