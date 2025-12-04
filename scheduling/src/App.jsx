@@ -18,6 +18,8 @@ import WorkerBookings from "./components/jobassigned";
 import Report from "./components/report";
 import ServicePricePage from "./components/servicecost";
 import Notifications from "./components/notifications";
+import ManpowerLeaveManager from "./components/leavemanagement";
+import BookingCalendar from "./components/calender";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -70,6 +72,7 @@ export default function App() {
             {isLoggedIn && role === "worker" && (
               <>
                 <Route path="/slot" element={<WorkerBookings />} />
+                <Route path="/leave" element={<ManpowerLeaveManager />} />
                 <Route path="*" element={<Navigate to="/slot" />} />
               </>
             )}
@@ -82,9 +85,12 @@ export default function App() {
                 <Route path="/service" element={<ServiceManager />} />
                 <Route path="/manpower" element={<Manpower />} />
                 <Route path="/slot" element={<WorkerBookings />} />
+                <Route path="/calendar" element={<BookingCalendar />} />
+                {/* <Route path="/leave" element={<ManpowerLeaveManager />} /> */}
                 <Route path="/report" element={<Report />} />
                 <Route path="/servicecost" element={<ServicePricePage />} />
                 <Route path="/notifications" element={<Notifications />} />
+                
                 <Route path="*" element={<Navigate to="/bookings" />} />
               </>
             )}

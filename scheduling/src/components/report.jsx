@@ -139,39 +139,43 @@ export default function Report() {
   ];
 
   // Price calculation using category + price_type - only for completed bookings
-  const getBookingCost = (booking) => {
-    // Only calculate cost if status is "completed"
-    const status = calculateStatus(booking);
-    if (status !== "completed") {
-      return 0;
-    }
+  // Price calculation using category + price_type - only for completed bookings
+const getBookingCost = (booking) => {
+  // Only calculate cost if status is "completed"
+  const status = calculateStatus(booking);
+  if (status !== "completed") {
+    return 0;
+  }
 
-    const rate =
-      prices?.[booking.service_id]?.[booking.category]?.[
-        booking.price_type
-      ] || 0;
+  // Map inter-department to industrial for pricing
+  const pricingCategory = booking.category === "inter-department" ? "industrial" : booking.category;
 
-    const start = new Date(booking.start_date);
-    const end = new Date(booking.end_date);
-    const diffMs = Math.abs(end - start);
+  const rate =
+    prices?.[booking.service_id]?.[pricingCategory]?.[
+      booking.price_type
+    ] || 0;
 
-    const hours = diffMs / 36e5;
-    const days = hours / 24;
+  const start = new Date(booking.start_date);
+  const end = new Date(booking.end_date);
+  const diffMs = Math.abs(end - start);
 
-    if (booking.price_type === "per_hour") {
-      return parseFloat((hours * rate).toFixed(2));
-    }
+  const hours = diffMs / 36e5;
+  const days = hours / 24;
 
-    if (booking.price_type === "per_day") {
-      return parseFloat((days * rate).toFixed(2));
-    }
-
-    if (booking.price_type === "per_sample") {
-      return parseFloat(rate.toFixed(2));
-    }
-
+  if (booking.price_type === "per_hour") {
     return parseFloat((hours * rate).toFixed(2));
-  };
+  }
+
+  if (booking.price_type === "per_day") {
+    return parseFloat((days * rate).toFixed(2));
+  }
+
+  if (booking.price_type === "per_sample") {
+    return parseFloat(rate.toFixed(2));
+  }
+
+  return parseFloat((hours * rate).toFixed(2));
+};
 
   // Get display cost for UI (shows 0 for non-completed bookings)
   const getDisplayCost = (booking) => {
@@ -282,7 +286,11 @@ export default function Report() {
 
     // Build filter info for print
     const filterInfo = [];
-    if (category) filterInfo.push(`Category: ${category}`);
+    if (category) {
+  const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+  filterInfo.push(`Category: ${formattedCategory}`);
+}
+
     if (department) filterInfo.push(`Department: ${department === "INTER_DEPARTMENT" ? "Inter Department (All CMTI)" : department}`);
     if (dateFilter === "month" && selectedMonth) {
       const [year, month] = selectedMonth.split('-');

@@ -184,9 +184,9 @@ const ServiceManager = () => {
       </div>
 
       {/* Footer */}
-      <footer className="text-gray-500 text-sm mt-8">
+      {/* <footer className="text-gray-500 text-sm mt-8">
         © {new Date().getFullYear()} Central Maintenance - Service Management
-      </footer>
+      </footer> */}
     </div>
   );
 };

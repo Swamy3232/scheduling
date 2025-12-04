@@ -236,16 +236,39 @@ export default function ProfessionalBookingForm() {
       const errorMessage = errorData?.detail || err.message;
       
       if (errorMessage.includes("already booked") || err.response?.status === 400) {
-        if (errorMessage.includes("service")) {
-          showMessage("🚫 Service is already booked for the selected time period. Please choose a different time slot.", "error");
-        } else if (errorMessage.includes("manpower")) {
-          showMessage("🚫 Selected manpower is already booked for this time period. Please choose another available person.", "error");
-        } else {
-          showMessage("🚫 This time slot is already booked. Please select a different time period.", "error");
-        }
-      } else {
-        showMessage("❌ Error creating booking. Please try again.", "error");
-      }
+
+  if (errorMessage.includes("service")) {
+    showMessage(
+      "🚫 Service is already booked for the selected time period. Please choose a different time slot.",
+      "error"
+    );
+
+  } else if (errorMessage.includes("manpower")) {
+    showMessage(
+      "🚫 Selected manpower is already booked for this time period. Please choose another available person.",
+      "error"
+    );
+
+  } else if (errorMessage.includes("on leave")) {
+    showMessage(
+      "🚫 The selected manpower is on leave during this time. Please choose another available person.",
+      "error"
+    );
+
+  } else {
+    showMessage(
+      "🚫 This time slot is already booked. Please select a different time period.",
+      "error"
+    );
+  }
+
+} else {
+  showMessage(
+    "❌ Error creating booking. Please try again.",
+    "error"
+  );
+}
+
     } finally {
       setLoading(false);
     }

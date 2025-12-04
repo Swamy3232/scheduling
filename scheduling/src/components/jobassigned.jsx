@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const WorkerDashboard = () => {
   const [bookings, setBookings] = useState([]);
@@ -16,20 +17,106 @@ const WorkerDashboard = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [viewingRemarks, setViewingRemarks] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
+  const navigate = useNavigate();
+
+  // Enhanced localStorage check
+  useEffect(() => {
+    console.log("🔍 WorkerDashboard - Checking for user authentication...");
+    
+    // Check for user in localStorage
+    const checkUserAuth = () => {
+      const storedUser = localStorage.getItem("user");
+      console.log("Raw localStorage 'user' value:", storedUser);
+      
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("✅ Parsed user object:", parsedUser);
+          
+          // Check if we have the required fields
+          if (parsedUser.username && parsedUser.role) {
+            console.log("✅ Valid user found:", parsedUser.username, "Role:", parsedUser.role);
+            setUserInfo(parsedUser);
+          } else {
+            console.warn("⚠️ User object missing required fields:", parsedUser);
+            // Try to navigate back to login
+            navigate("/login");
+          }
+        } catch (error) {
+          console.error("❌ Error parsing user data:", error);
+          localStorage.removeItem("user");
+          navigate("/login");
+        }
+      } else {
+        console.log("❌ No user found in localStorage, redirecting to login...");
+        navigate("/login");
+      }
+    };
+    
+    checkUserAuth();
+    
+    // Also check all localStorage for debugging
+    console.log("📋 All localStorage items:");
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      console.log(`${key}: ${localStorage.getItem(key)}`);
+    }
+  }, [navigate]);
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (userInfo) {
+      console.log("📊 User authenticated, fetching bookings...");
+      fetchBookings();
+    }
+  }, [userInfo]);
 
   const fetchBookings = async () => {
     console.log("[fetchBookings] start");
     setLoading(true);
     try {
       const res = await axios.get("https://manpower.cmti.online/bookings/");
-      console.log("[fetchBookings] success, count:", Array.isArray(res.data) ? res.data.length : "?", res);
-      setBookings(res.data);
+      console.log("[fetchBookings] success, total bookings:", Array.isArray(res.data) ? res.data.length : "?");
+      
+      // Filter bookings based on user role
+      let filteredData = res.data;
+      if (userInfo?.role === "worker" && userInfo?.username) {
+        // Show only bookings assigned to this worker
+        // Try different field names that might contain the worker's name
+        filteredData = res.data.filter(booking => {
+          const matches = 
+            booking.manpower_name === userInfo.username ||
+            booking.staff_name === userInfo.username ||
+            booking.worker_name === userInfo.username ||
+            booking.assigned_to === userInfo.username;
+          
+          if (matches) {
+            console.log("✅ Booking assigned to worker:", booking.service_name);
+          }
+          return matches;
+        });
+        
+        if (filteredData.length === 0) {
+          console.log("ℹ️ No bookings found for worker:", userInfo.username);
+          console.log("Sample booking to check field names:", res.data[0]);
+        }
+        
+        console.log(`Filtered for worker "${userInfo.username}":`, filteredData.length, "bookings");
+      } else if (userInfo?.role === "admin") {
+        // Admin sees all bookings
+        console.log("👑 Admin viewing all bookings");
+      }
+      
+      setBookings(filteredData);
     } catch (err) {
-      console.error("[fetchBookings] error:", err, err?.response?.data);
+      console.error("[fetchBookings] error:", err);
+      console.error("Error details:", err?.response?.data || err?.message);
+      
+      // If unauthorized, redirect to login
+      if (err.response?.status === 401) {
+        localStorage.removeItem("user");
+        navigate("/login");
+      }
     } finally {
       setLoading(false);
       console.log("[fetchBookings] done");
@@ -112,7 +199,6 @@ const WorkerDashboard = () => {
     console.log("[handleEditClick] opening modal for booking:", booking);
     setEditingBooking(booking);
     
-    // Automatically change from "accepted" OR "rejected" to "waiting" when editing
     const newRemarksUpdate = (booking.remarks_update === "accepted" || booking.remarks_update === "rejected") 
       ? "waiting" 
       : (booking.remarks_update || "waiting");
@@ -136,18 +222,11 @@ const WorkerDashboard = () => {
       return;
     }
 
-    console.log("[handleEditSubmit] submitting. booking_id:", editingBooking.booking_id, "remarks:", editForm.remarks, "remarks_update:", editForm.remarks_update);
+    console.log("[handleEditSubmit] submitting. booking_id:", editingBooking.booking_id);
     let success = false;
     setIsEditing(true);
 
     try {
-      console.log("[handleEditSubmit] axios.put request -> url:",
-        `https://manpower.cmti.online/bookings/${editingBooking.booking_id}`,
-        "params:", { 
-          remarks: editForm.remarks,
-          remarks_update: editForm.remarks_update 
-        });
-
       const res = await axios.put(
         `https://manpower.cmti.online/bookings/${editingBooking.booking_id}`,
         null,
@@ -164,17 +243,14 @@ const WorkerDashboard = () => {
       success = true;
       await fetchBookings();
     } catch (err) {
-      console.error("[handleEditSubmit] update failed:", err, err?.response?.data || err?.message);
-      alert("Failed to update remarks. See console for details.");
+      console.error("[handleEditSubmit] update failed:", err);
+      alert("Failed to update remarks. Please try again.");
     } finally {
       setIsEditing(false);
 
       if (success) {
         setEditingBooking(null);
         setEditForm({ remarks: "", remarks_update: "waiting" });
-        console.log("[handleEditSubmit] update successful — modal closed");
-      } else {
-        console.log("[handleEditSubmit] update not successful — modal remains open for retry");
       }
     }
   };
@@ -189,6 +265,12 @@ const WorkerDashboard = () => {
   const handleCloseRemarks = () => {
     console.log("[handleCloseRemarks] closing remarks modal");
     setViewingRemarks(null);
+  };
+
+  const handleLogout = () => {
+    console.log("👋 Logging out...");
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   const getStatusBadge = (status) => {
@@ -228,6 +310,18 @@ const WorkerDashboard = () => {
     );
   };
 
+  // If still checking auth
+  if (!userInfo && !loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -245,15 +339,40 @@ const WorkerDashboard = () => {
       <div className="bg-white shadow border-b">
         <div className="max-w-7xl mx-auto p-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Staff Dashboard</h1>
-            <p className="text-gray-500">Manage and track your service bookings</p>
+            <h1 className="text-3xl font-bold">
+              {userInfo.role === "admin" ? "Admin Dashboard" : "Staff Dashboard"}
+            </h1>
+            <p className="text-gray-500">
+              {userInfo.role === "admin" 
+                ? "Manage all service bookings" 
+                : "Manage and track your service bookings"}
+            </p>
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-semibold">Logged in as:</span> {userInfo.username} ({userInfo.role})
+              {userInfo.role === "worker" && (
+                <span className="ml-4 text-blue-600">
+                  Showing only your assigned bookings
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => { console.log("[Refresh button] clicked"); fetchBookings(); }}
-            className="px-4 py-2 border rounded bg-white hover:bg-gray-50"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => { 
+                console.log("[Refresh button] clicked"); 
+                fetchBookings(); 
+              }}
+              className="px-4 py-2 border rounded bg-white hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              // className="px-4 py-2 border rounded bg-red-50 text-red-600 hover:bg-red-100"
+            >
+              {/* Logout */}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -293,14 +412,36 @@ const WorkerDashboard = () => {
         )}
 
         {/* TABLE */}
-        <BookingsTable
-          filteredBookings={filteredBookings}
-          getStatus={getStatus}
-          getStatusBadge={getStatusBadge}
-          getRemarksUpdateBadge={getRemarksUpdateBadge}
-          handleEditClick={handleEditClick}
-          handleViewRemarks={handleViewRemarks}
-        />
+        {bookings.length === 0 ? (
+          <div className="bg-white rounded shadow p-12 text-center">
+            <h3 className="text-xl font-semibold text-gray-700">
+              {userInfo.role === "worker" 
+                ? "No bookings assigned to you yet" 
+                : "No bookings found"}
+            </h3>
+            <p className="text-gray-500 mt-2">
+              {userInfo.role === "worker" 
+                ? "You don't have any assigned service bookings at the moment." 
+                : "There are no bookings in the system."}
+            </p>
+            <button
+              onClick={fetchBookings}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Check Again
+            </button>
+          </div>
+        ) : (
+          <BookingsTable
+            filteredBookings={filteredBookings}
+            getStatus={getStatus}
+            getStatusBadge={getStatusBadge}
+            getRemarksUpdateBadge={getRemarksUpdateBadge}
+            handleEditClick={handleEditClick}
+            handleViewRemarks={handleViewRemarks}
+            userRole={userInfo.role}
+          />
+        )}
       </div>
     </div>
   );
@@ -319,7 +460,6 @@ const Filters = ({ filters, handleFilterChange }) => (
   <div className="bg-white rounded shadow p-6 mb-6">
     <h3 className="font-semibold mb-4">Filters</h3>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Search */}
       <div>
         <label className="text-sm text-gray-700">Search</label>
         <input
@@ -331,7 +471,6 @@ const Filters = ({ filters, handleFilterChange }) => (
         />
       </div>
 
-      {/* Status */}
       <div>
         <label className="text-sm text-gray-700">Status</label>
         <select
@@ -346,7 +485,6 @@ const Filters = ({ filters, handleFilterChange }) => (
         </select>
       </div>
 
-      {/* Date Range */}
       <div>
         <label className="text-sm text-gray-700">Date Range</label>
         <select
@@ -379,7 +517,6 @@ const EditModal = ({
       </h3>
 
       <form onSubmit={handleEditSubmit}>
-        {/* Remarks Update Dropdown - Read-only since it auto-changes */}
         <div className="mb-4">
           <label className="text-sm text-gray-700">Status</label>
           <select
@@ -397,7 +534,6 @@ const EditModal = ({
           </p>
         </div>
 
-        {/* Remarks Textarea */}
         <div className="mb-4">
           <label className="text-sm text-gray-700">Remarks</label>
           <textarea
@@ -478,6 +614,7 @@ const BookingsTable = ({
   getRemarksUpdateBadge,
   handleEditClick,
   handleViewRemarks,
+  userRole,
 }) => (
   <div className="bg-white rounded shadow overflow-x-auto">
     <table className="min-w-full divide-y divide-gray-200">
@@ -512,29 +649,30 @@ const BookingsTable = ({
 
           return (
             <tr key={idx} className="hover:bg-gray-50">
-              {/* SERVICE DETAILS */}
               <td className="px-6 py-4">
                 <div className="font-semibold">{b.service_name}</div>
                 <div className="text-gray-500 text-sm">ID: {b.service_id}</div>
               </td>
 
-              {/* STAFF */}
-              <td className="px-6 py-4">{b.manpower_name || "-"}</td>
+              <td className="px-6 py-4">
+                {b.manpower_name || "-"}
+                {userRole === "admin" && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    {b.manpower_name ? "Assigned" : "Unassigned"}
+                  </div>
+                )}
+              </td>
 
-              {/* DEPT */}
               <td className="px-6 py-4">{b.department || "-"}</td>
 
-              {/* CATEGORY */}
               <td className="px-6 py-4 capitalize">{b.category || "-"}</td>
 
-              {/* PRICE TYPE */}
               <td className="px-6 py-4">
                 {b.price_type
                   ? b.price_type.replace("_", " ").toUpperCase()
                   : "-"}
               </td>
 
-              {/* REMARKS - Only show button if remarks exist */}
               <td className="px-6 py-4">
                 {hasRemarks ? (
                   <button
@@ -548,12 +686,10 @@ const BookingsTable = ({
                 )}
               </td>
 
-              {/* REMARKS UPDATE STATUS */}
               <td className="px-6 py-4">
                 {getRemarksUpdateBadge(b.remarks_update || "waiting")}
               </td>
 
-              {/* TIMELINE */}
               <td className="px-6 py-4 text-sm">
                 <div>
                   <strong>Start:</strong>{" "}
@@ -569,10 +705,8 @@ const BookingsTable = ({
                 </div>
               </td>
 
-              {/* STATUS */}
               <td className="px-6 py-4">{getStatusBadge(status)}</td>
 
-              {/* ACTIONS */}
               <td className="px-6 py-4">
                 <button
                   onClick={() => handleEditClick(b)}

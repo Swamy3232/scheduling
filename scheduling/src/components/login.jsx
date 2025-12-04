@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-// Import your background image
 import backgroundImage from "../assets/download.webp";
 
 const Login = () => {
@@ -22,26 +20,115 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post("https://manpower.cmti.online/auth/login", formData, {
-        headers: { "Content-Type": "application/json" },
+      console.log("🔐 Attempting login...");
+      const res = await axios.post(
+        "https://manpower.cmti.online/auth/login", 
+        formData, 
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      console.log("✅ Login success response:", res.data);
+      
+      // IMPORTANT: The API might return different structure
+      // Let's check what we actually get
+      console.log("📋 Response structure analysis:", {
+        hasAccessToken: !!res.data.access_token,
+        hasRole: !!res.data.role,
+        hasUsername: !!res.data.username,
+        fullData: res.data
       });
-
-      console.log("✅ Login success:", res.data);
-
-      // Save token
-      localStorage.setItem("token", res.data.access_token);
+      
+      // Store token for other API calls
+      if (res.data.access_token) {
+        localStorage.setItem("token", res.data.access_token);
+      }
+      
+      // Also need to store user info in the format WorkerDashboard expects
+      const userData = {
+        // Try different possible fields from the response
+        username: res.data.username || formData.username || res.data.user?.username,
+        role: res.data.role?.toLowerCase() || res.data.user?.role?.toLowerCase() || "worker",
+        message: res.data.message || "Login successful"
+      };
+      
+      console.log("💾 Storing user data:", userData);
+      
+      // Store in localStorage as 'user' object (what WorkerDashboard expects)
+      localStorage.setItem("user", JSON.stringify(userData));
+      
+      // Also store role separately for compatibility
+      localStorage.setItem("role", userData.role);
       localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("role", res.data.role.toLowerCase());
-
+      
+      // Verify storage
+      const storedUser = localStorage.getItem("user");
+      console.log("✅ Stored in localStorage (user):", storedUser);
+      
       // Notify Navbar
       window.dispatchEvent(new Event("authChange"));
-
-      navigate("/slot-check");
+      
+      // Add a small delay to ensure localStorage is written
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 100);
+      
     } catch (err) {
-      console.error("❌ Login error:", err);
-      setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+      console.error("❌ Login error details:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message
+      });
+      
+      // More specific error messages
+      if (err.response?.status === 401) {
+        setError("Invalid username or password");
+      } else if (err.response?.status === 404) {
+        setError("Login service unavailable. Please try again later.");
+      } else if (err.response?.status === 500) {
+        setError("Server error. Please contact administrator.");
+      } else if (!err.response) {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Optional: Add a debug function to test different endpoints
+  const testLoginEndpoints = async () => {
+    const endpoints = [
+      "https://manpower.cmti.online/auth/login",
+      "https://manpower.cmti.online/login/", // Your original endpoint
+      "https://manpower.cmti.online/login"   // Without trailing slash
+    ];
+    
+    console.log("🔍 Testing login endpoints...");
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Testing: ${endpoint}`);
+        const testRes = await axios.post(endpoint, formData, {
+          headers: { "Content-Type": "application/json" }
+        });
+        console.log(`✅ ${endpoint} works:`, testRes.data);
+        return endpoint;
+      } catch (err) {
+        console.log(`❌ ${endpoint} failed:`, err.message);
+      }
+    }
+    return null;
+  };
+
+  // Debug: Check what's currently in localStorage
+  const checkLocalStorage = () => {
+    console.log("📋 Current localStorage contents:");
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      console.log(`${key}: ${localStorage.getItem(key)}`);
     }
   };
 
@@ -217,12 +304,40 @@ const Login = () => {
                 </button>
               </form>
 
+              {/* Debug buttons (remove in production) */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex space-x-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={checkLocalStorage}
+                    // className="px-4 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  >
+                    {/* Check Storage */}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Simulate successful login for testing
+                      const testUser = {
+                        username: "Test Worker",
+                        role: "worker",
+                        message: "Login successful"
+                      };
+                      localStorage.setItem("user", JSON.stringify(testUser));
+                      console.log("Test user saved:", testUser);
+                      navigate("/dashboard");
+                    }}
+                    // className="px-4 py-2 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+                  >
+                    {/* Test Login */}
+                  </button>
+                </div>
+              </div>
+
               {/* Footer */}
-              <div className="mt-12 pt-8 border-t border-gray-200">
+              <div className="mt-8 pt-8 border-t border-gray-200">
                 <p className="text-xs text-gray-500 text-center leading-6">
-                  © 2024 CMTI - Advanced Material Characterization Team. All rights reserved.
-                  <br />
-                  Unauthorized access is strictly prohibited. Compliance with organizational security policies required.
+                  © 2025 CMTI - Advanced Material Characterization Team. All rights reserved.
                 </p>
               </div>
             </div>

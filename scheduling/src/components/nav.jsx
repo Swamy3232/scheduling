@@ -37,6 +37,7 @@ const Navbar = () => {
     window.addEventListener("authChange", handleAuthChange);
     return () => window.removeEventListener("authChange", handleAuthChange);
   }, []);
+const displayRole = role === "worker" ? "Workforce" : role;
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
@@ -54,6 +55,8 @@ const Navbar = () => {
     { name: "Cost Wise Report", path: "/report", roles: ["admin"] },
     { name: "Service Cost Setting", path: "/servicecost", roles: ["admin"] },
     { name: "Notifications", path: "/notifications", roles: ["admin"] },
+    {name:"Leave Management", path:"/leave", roles:["worker"]},
+    {name:"Work Calender", path:"/calendar", roles:["admin"]},
   ];
 
   const filteredNavItems = navItems.filter(item =>
@@ -164,8 +167,9 @@ const Navbar = () => {
                     </div>
                     <div className="flex flex-col items-start">
                       <span className="text-sm font-semibold text-gray-900 capitalize leading-none">
-                        {role}
+                        {displayRole}
                       </span>
+
                       <span className="text-xs text-gray-500">Online</span>
                     </div>
                     <ChevronDown 
