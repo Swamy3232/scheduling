@@ -10,6 +10,8 @@ import {
   Phone,
   Settings,
   XCircle,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Modal, ModalHeader, ModalBody, ModalFooter, StatusBadge } from "../components/ui";
 
@@ -326,6 +328,23 @@ export default function Manpower() {
                         <p className="text-sm text-gray-500">{person.contact || "No contact"}</p>
                       </div>
                     </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({
+                          service_id: "",
+                          name: person.name,
+                          role: "",
+                          contact: person.contact || "",
+                        });
+                        setEditId(null);
+                        setShowModal(true);
+                      }}
+                      leftIcon={<Plus size={16} />}
+                    >
+                      Add Service
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
