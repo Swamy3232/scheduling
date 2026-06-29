@@ -158,82 +158,6 @@ export default function Manpower() {
     mp.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Modal Component
-  const ManpowerModal = () => (
-    <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} size="md">
-      <ModalHeader>
-        <CardTitle>{editId ? "Edit Manpower" : "Add New Manpower"}</CardTitle>
-      </ModalHeader>
-      <ModalBody>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Service *
-            </label>
-            <select
-              name="service_id"
-              value={formData.service_id}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-              required
-            >
-              <option value="">Select Service</option>
-              {services.map((srv) => (
-                <option key={srv.service_id} value={srv.service_id}>
-                  {srv.service_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <Input
-            label="Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            placeholder="Enter name"
-            leftIcon={<User size={20} className="text-gray-400" />}
-          />
-
-          <Input
-            label="Role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            placeholder="Enter role"
-            leftIcon={<Briefcase size={20} className="text-gray-400" />}
-          />
-
-          <Input
-            label="Contact"
-            name="contact"
-            value={formData.contact}
-            onChange={handleChange}
-            placeholder="Enter contact"
-            leftIcon={<Phone size={20} className="text-gray-400" />}
-          />
-        </form>
-      </ModalBody>
-      <ModalFooter>
-        <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => { setShowModal(false); resetForm(); }}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="flex-1"
-          >
-            {editId ? "Update Manpower" : "Add Manpower"}
-          </Button>
-        </div>
-      </ModalFooter>
-    </Modal>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -395,7 +319,79 @@ export default function Manpower() {
         </div>
       </div>
 
-      <ManpowerModal />
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} size="md">
+        <ModalHeader>
+          <CardTitle>{editId ? "Edit Manpower" : "Add New Manpower"}</CardTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Service *
+              </label>
+              <select
+                name="service_id"
+                value={formData.service_id}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
+                required
+              >
+                <option value="">Select Service</option>
+                {services.map((srv) => (
+                  <option key={srv.service_id} value={srv.service_id}>
+                    {srv.service_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Input
+              label="Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              placeholder="Enter name"
+              leftIcon={<User size={20} className="text-gray-400" />}
+            />
+
+            <Input
+              label="Role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              placeholder="Enter role"
+              leftIcon={<Briefcase size={20} className="text-gray-400" />}
+            />
+
+            <Input
+              label="Contact"
+              name="contact"
+              value={formData.contact}
+              onChange={handleChange}
+              placeholder="Enter contact"
+              leftIcon={<Phone size={20} className="text-gray-400" />}
+            />
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => { setShowModal(false); resetForm(); }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="flex-1"
+            >
+              {editId ? "Update Manpower" : "Add Manpower"}
+            </Button>
+          </div>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }
