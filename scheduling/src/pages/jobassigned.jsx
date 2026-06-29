@@ -434,7 +434,7 @@ const WorkerDashboard = () => {
                 : "Manage and track your service bookings"}
             </p>
             <div className="mt-2 text-sm text-gray-600">
-              <span className="font-semibold">Logged in as:</span> {userInfo.username} ({userInfo.role})
+              <span className="font-semibold">Logged in as:</span>
               {userInfo.role === "worker" && (
                 <span className="ml-4 text-blue-600">
                   Showing only your assigned bookings
