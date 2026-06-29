@@ -302,7 +302,7 @@ export default function ManpowerLeaveManager() {
             <div className="text-right">
               <div className="text-sm text-gray-600">Logged in as</div>
               <div className="font-medium text-gray-900">{userInfo.username}</div>
-              <div className="text-xs text-gray-500 capitalize">{userInfo.role}</div>
+              {/* <div className="text-xs text-gray-500 capitalize">{userInfo.role}</div> */}
             </div>
           </div>
         </div>
