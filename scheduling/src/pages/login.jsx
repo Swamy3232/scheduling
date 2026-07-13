@@ -22,8 +22,8 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        "https://manpower.cmTI.online/auth/login", 
-        formData, 
+        "https://manpower.cmTI.online/auth/login",
+        formData,
         {
           headers: { "Content-Type": "application/json" },
         }
@@ -32,23 +32,23 @@ const Login = () => {
       if (res.data.access_token) {
         localStorage.setItem("token", res.data.access_token);
       }
-      
+
       const userData = {
         username: res.data.username || formData.username || res.data.user?.username,
         role: res.data.role?.toLowerCase() || res.data.user?.role?.toLowerCase() || "worker",
         message: res.data.message || "Login successful"
       };
-      
+
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("role", userData.role);
       localStorage.setItem("isLoggedIn", "true");
-      
+
       window.dispatchEvent(new Event("authChange"));
-      
+
       setTimeout(() => {
         navigate("/bookings");
       }, 100);
-      
+
     } catch (err) {
       if (err.response?.status === 401) {
         setError("Invalid username or password");
@@ -72,7 +72,7 @@ const Login = () => {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 flex-col justify-between p-12 text-white relative overflow-hidden">
         {/* Decorative Grid Patterns */}
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        
+
         <div className="flex items-center gap-3 relative z-10">
           <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-md border border-white/20">
             <span className="font-bold text-white text-base">CMTI</span>
@@ -81,11 +81,11 @@ const Login = () => {
         </div>
 
         <div className="space-y-6 relative z-10 max-w-lg">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-200 border border-blue-500/30">
+          {/* <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-200 border border-blue-500/30">
             <Settings size={12} className="animate-spin-slow" /> Enterprise CMMS Suite
-          </span>
+          </span> */}
           <h2 className="text-4xl font-extrabold tracking-tight leading-tight">
-            Industrial Grade AMC Maintenance Scheduler
+            AMC Maintenance Scheduler
           </h2>
           <p className="text-blue-100 text-sm leading-relaxed">
             Monitor, assign, and manage workforce allocations, schedules, and costs inside a unified enterprise workflow environment.
@@ -100,7 +100,7 @@ const Login = () => {
       {/* Right side form column */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md space-y-8">
-          
+
           <div className="text-left space-y-2">
             {/* Logo for mobile view */}
             <div className="lg:hidden w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md mb-6">
