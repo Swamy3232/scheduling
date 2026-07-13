@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, Search, AlertTriangle, Edit, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, ModalHeader, ModalBody, ModalFooter, Textarea, StatusBadge } from "../components/ui";
+import { RefreshCw, Search, AlertTriangle, Edit, Eye, Clock, CheckCircle, AlertCircle, Info, Calendar, UserCheck, ShieldAlert, LogOut } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, ModalHeader, ModalBody, ModalFooter, Textarea } from "../components/ui";
 
 const WorkerDashboard = () => {
   const [bookings, setBookings] = useState([]);
@@ -28,23 +28,15 @@ const WorkerDashboard = () => {
   useEffect(() => {
     console.log("🔍 WorkerDashboard - Checking for user authentication...");
     
-    // Check for user in localStorage
     const checkUserAuth = () => {
       const storedUser = localStorage.getItem("user");
-      console.log("Raw localStorage 'user' value:", storedUser);
       
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log("✅ Parsed user object:", parsedUser);
-          
-          // Check if we have the required fields
           if (parsedUser.username && parsedUser.role) {
-            console.log("✅ Valid user found:", parsedUser.username, "Role:", parsedUser.role);
             setUserInfo(parsedUser);
           } else {
-            console.warn("⚠️ User object missing required fields:", parsedUser);
-            // Try to navigate back to login
             navigate("/login");
           }
         } catch (error) {
@@ -53,29 +45,17 @@ const WorkerDashboard = () => {
           navigate("/login");
         }
       } else {
-        console.log("❌ No user found in localStorage, redirecting to login...");
         navigate("/login");
       }
     };
     
     checkUserAuth();
-    
-    // Also check all localStorage for debugging
-    console.log("📋 All localStorage items:");
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      console.log(`${key}: ${localStorage.getItem(key)}`);
-    }
   }, [navigate]);
 
   useEffect(() => {
     if (userInfo) {
-      console.log("📊 User authenticated, fetching bookings...");
       fetchBookings();
-      
-      // Check for overdue bookings every 30 seconds
       const overdueInterval = setInterval(checkOverdueBookings, 30000);
-      
       return () => clearInterval(overdueInterval);
     }
   }, [userInfo]);
@@ -95,14 +75,11 @@ const WorkerDashboard = () => {
     setOverdueBookings(overdue);
     
     if (overdue.length > 0) {
-      console.warn("⚠️ WARNING: " + overdue.length + " booking(s) are overdue and not completed!");
-      // Play a beep sound or browser notification
       playWarningSound();
     }
   };
 
   const playWarningSound = () => {
-    // Create a simple beep using Web Audio API
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -111,7 +88,7 @@ const WorkerDashboard = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 800; // Frequency in Hz
+      oscillator.frequency.value = 800;
       oscillator.type = "sine";
       
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
@@ -125,55 +102,29 @@ const WorkerDashboard = () => {
   };
 
   const fetchBookings = async () => {
-    console.log("[fetchBookings] start");
     setLoading(true);
     try {
       const res = await axios.get("https://manpower.cmti.online/bookings/");
-      console.log("[fetchBookings] success, total bookings:", Array.isArray(res.data) ? res.data.length : "?");
-      
-      // Filter bookings based on user role
       let filteredData = res.data;
       if (userInfo?.role === "worker" && userInfo?.username) {
-        // Show only bookings assigned to this worker
-        // Try different field names that might contain the worker's name
         filteredData = res.data.filter(booking => {
-          const matches = 
+          return (
             booking.manpower_name === userInfo.username ||
             booking.staff_name === userInfo.username ||
             booking.worker_name === userInfo.username ||
-            booking.assigned_to === userInfo.username;
-          
-          if (matches) {
-            console.log("✅ Booking assigned to worker:", booking.service_name);
-          }
-          return matches;
+            booking.assigned_to === userInfo.username
+          );
         });
-        
-        if (filteredData.length === 0) {
-          console.log("ℹ️ No bookings found for worker:", userInfo.username);
-          console.log("Sample booking to check field names:", res.data[0]);
-        }
-        
-        console.log(`Filtered for worker "${userInfo.username}":`, filteredData.length, "bookings");
-      } else if (userInfo?.role === "admin") {
-        // Admin sees all bookings
-        console.log("👑 Admin viewing all bookings");
       }
-      
       setBookings(filteredData);
     } catch (err) {
       console.error("[fetchBookings] error:", err);
-      console.error("Error details:", err?.response?.data || err?.message);
-      
-      // If unauthorized, redirect to login
       if (err.response?.status === 401) {
         localStorage.removeItem("user");
         navigate("/login");
       }
     } finally {
       setLoading(false);
-      console.log("[fetchBookings] done");
-      // Check for overdue bookings after fetching
       setTimeout(checkOverdueBookings, 500);
     }
   };
@@ -251,7 +202,6 @@ const WorkerDashboard = () => {
   };
 
   const handleEditClick = (booking) => {
-    console.log("[handleEditClick] opening modal for booking:", booking);
     setEditingBooking(booking);
     
     const newRemarksUpdate = (booking.remarks_update === "accepted" || booking.remarks_update === "rejected") 
@@ -267,23 +217,17 @@ const WorkerDashboard = () => {
   };
 
   const handleViewRemarks = (booking) => {
-    console.log("[handleViewRemarks] opening remarks modal for booking:", booking);
     setViewingRemarks(booking);
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    if (!editingBooking) {
-      console.warn("[handleEditSubmit] no editingBooking present");
-      return;
-    }
+    if (!editingBooking) return;
 
-    console.log("[handleEditSubmit] submitting. booking_id:", editingBooking.booking_id);
-    let success = false;
     setIsEditing(true);
 
     try {
-      const res = await axios.put(
+      await axios.put(
         `https://manpower.cmti.online/bookings/${editingBooking.booking_id}`,
         null,
         { 
@@ -295,527 +239,463 @@ const WorkerDashboard = () => {
         }
       );
 
-      console.log("[handleEditSubmit] response:", res.status, res.data);
-
-      success = true;
       await fetchBookings();
     } catch (err) {
       console.error("[handleEditSubmit] update failed:", err);
       alert("Failed to update remarks. Please try again.");
     } finally {
       setIsEditing(false);
-
-      if (success) {
-        setEditingBooking(null);
-        setEditForm({ remarks: "", remarks_update: "waiting", workstatus: "pending" });
-      }
+      setEditingBooking(null);
+      setEditForm({ remarks: "", remarks_update: "waiting", workstatus: "pending" });
     }
   };
 
   const handleCancelEdit = () => {
-    console.log("[handleCancelEdit] user cancelled edit");
     setEditingBooking(null);
     setEditForm({ remarks: "", remarks_update: "waiting", workstatus: "pending" });
     setIsEditing(false);
   };
 
   const handleCloseRemarks = () => {
-    console.log("[handleCloseRemarks] closing remarks modal");
     setViewingRemarks(null);
   };
 
   const handleLogout = () => {
-    console.log("👋 Logging out...");
     localStorage.removeItem("user");
     navigate("/login");
   };
 
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      upcoming: "pending",
-      ongoing: "active",
-      completed: "inactive",
-      unknown: "pending"
-    };
-    const labelMap = {
-      upcoming: "Upcoming",
-      ongoing: "In Progress",
-      completed: "Completed",
-      unknown: "Unknown"
-    };
-    return <StatusBadge status={statusMap[status] || "pending"} label={labelMap[status] || "Unknown"} />;
+  // Status mapping
+  const renderStatusBadge = (b) => {
+    const s = getStatus(b.start_date, b.end_date);
+    switch (s) {
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+            🟢 Completed
+          </span>
+        );
+      case "ongoing":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            🔵 Ongoing
+          </span>
+        );
+      case "upcoming":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            🟠 Scheduled
+          </span>
+        );
+    }
   };
 
-  const getRemarksUpdateBadge = (remarks_update) => {
-    const statusMap = {
-      waiting: "pending",
-      accepted: "active",
-      rejected: "inactive"
-    };
-    const labelMap = {
-      waiting: "Waiting",
-      accepted: "Accepted",
-      rejected: "Rejected"
-    };
-    return <StatusBadge status={statusMap[remarks_update] || "pending"} label={labelMap[remarks_update] || "Waiting"} />;
+  // Work status chip renderer
+  const renderWorkStatusChip = (workstatus) => {
+    const ws = (workstatus || "pending").toLowerCase();
+    switch (ws) {
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Completed
+          </span>
+        );
+      case "in-progress":
+      case "in progress":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+            In Progress
+          </span>
+        );
+      case "hold":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+            On Hold
+          </span>
+        );
+      case "pending":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200">
+            Pending
+          </span>
+        );
+    }
   };
 
-  const getWorkStatusBadge = (workstatus) => {
-    const statusMap = {
-      pending: "pending",
-      "in-progress": "active",
-      completed: "inactive",
-      hold: "pending"
-    };
-    const labelMap = {
-      pending: "Pending",
-      "in-progress": "In Progress",
-      completed: "Completed",
-      hold: "On Hold"
-    };
-    const config = {
-      pending: { animate: true },
-      "in-progress": { animate: false },
-      completed: { animate: false },
-      hold: { animate: false }
-    };
-    return (
-      <StatusBadge 
-        status={statusMap[workstatus] || "pending"} 
-        label={labelMap[workstatus] || "Pending"}
-        animate={config[workstatus]?.animate || false}
-      />
-    );
+  // Remarks status badge
+  const renderRemarksUpdateBadge = (ru) => {
+    const val = (ru || "waiting").toLowerCase();
+    switch (val) {
+      case "accepted":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Accepted
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">
+            Rejected
+          </span>
+        );
+      case "waiting":
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+            Waiting
+          </span>
+        );
+    }
   };
 
-  // If still checking auth
   if (!userInfo && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-500">Checking authentication...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-500">Loading bookings...</span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center p-8 space-y-3">
+          <RefreshCw className="animate-spin mx-auto text-blue-600" size={24} />
+          <p className="text-xs text-gray-500 font-semibold">Resolving session security context...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-8">
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="w-full px-6 py-8 max-w-none">
+      
+      {/* Top Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <UserCheck size={32} />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {userInfo.role === "admin" ? "Admin Dashboard" : "Staff Dashboard"}
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <span>📋</span> Workforce Job Board
             </h1>
-            <p className="text-gray-600">
-              {userInfo.role === "admin" 
-                ? "Manage all service bookings" 
-                : "Manage and track your service bookings"}
+            <p className="text-gray-500 mt-1 text-sm">
+              View your assigned AMC tickets, update work completion statuses, and submit inspector remarks.
             </p>
-            <div className="mt-2 text-sm text-gray-600">
-              <span className="font-semibold">Logged in as:</span>
-              {userInfo.role === "worker" && (
-                <span className="ml-4 text-blue-600">
-                  Showing only your assigned bookings
-                </span>
-              )}
-            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={fetchBookings}
-              leftIcon={<RefreshCw size={20} />}
-            >
-              Refresh
-            </Button>
-          </div>
-        </div>
-        
-        {/* OVERDUE WARNING BANNER */}
-        {overdueBookings.length > 0 && (
-          <Card className="mb-6 border-l-4 border-red-600 animate-pulse">
-            <CardContent className="p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <AlertTriangle size={24} className="text-red-600" />
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-red-800">
-                    URGENT: {overdueBookings.length} Booking(s) Are Overdue!
-                  </p>
-                  <p className="text-sm text-red-700 mt-2">
-                    The following services have exceeded their scheduled end time and are still not marked as completed:
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {overdueBookings.map((booking, idx) => (
-                      <div key={idx} className="bg-white rounded p-3 border-l-2 border-red-600">
-                        <div className="font-semibold text-red-800">{booking.service_name}</div>
-                        <div className="text-sm text-red-700">
-                          <strong>Staff:</strong> {booking.manpower_name || "Unassigned"}
-                        </div>
-                        <div className="text-sm text-red-700">
-                          <strong>Scheduled End:</strong> {new Date(booking.end_date).toLocaleString("en-IN")}
-                        </div>
-                        <div className="text-sm text-red-700">
-                          <strong>Current Status:</strong> {booking.workstatus || "Unknown"}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleEditClick(booking)}
-                          className="mt-2"
-                          leftIcon={<Edit size={14} />}
-                        >
-                          Update Status Now
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* STAT CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-gray-600">Total Bookings</p>
-              <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-gray-600">Completed</p>
-              <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-gray-600">In Progress</p>
-              <p className="text-3xl font-bold text-yellow-600">{stats.ongoing}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-gray-600">Upcoming</p>
-              <p className="text-3xl font-bold text-purple-600">{stats.upcoming}</p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* FILTERS */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm text-gray-700">Search</label>
-                <Input
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
-                  placeholder="Search bookings..."
-                  leftIcon={<Search size={18} className="text-gray-400" />}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="ongoing">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Date Range</label>
-                <select
-                  value={filters.dateRange}
-                  onChange={(e) => handleFilterChange("dateRange", e.target.value)}
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="week">Next 7 Days</option>
-                  <option value="month">Next 30 Days</option>
-                </select>
-              </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={fetchBookings}
+            className="h-11 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 font-medium px-4 text-gray-700 shadow-sm"
+            leftIcon={<RefreshCw size={16} className={loading ? "animate-spin" : ""} />}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleLogout}
+            className="h-11 rounded-xl font-medium px-4 shadow-sm"
+            leftIcon={<LogOut size={16} />}
+          >
+            Log Out
+          </Button>
+        </div>
+      </div>
+
+      {/* Overdue Warning Card */}
+      {overdueBookings.length > 0 && (
+        <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 shadow-sm animate-pulse">
+          <ShieldAlert className="text-red-600 shrink-0 mt-0.5" size={20} />
+          <div>
+            <h5 className="text-xs font-extrabold text-red-800 uppercase tracking-wider">Overdue Job Allocation alert</h5>
+            <p className="text-xs text-red-700 mt-1 leading-relaxed">
+              Attention! You have <strong>{overdueBookings.length}</strong> assigned task(s) whose schedules are past due and not completed. Please update status to completed or add pause notes.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Assigned Tickets</span>
+              <span className="text-2xl font-extrabold text-gray-800 block">{stats.total}</span>
+            </div>
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+              <UserCheck size={20} />
             </div>
           </CardContent>
         </Card>
 
-        {/* EDIT MODAL */}
-        <Modal isOpen={!!editingBooking} onClose={handleCancelEdit} size="md">
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Completed</span>
+              <span className="text-2xl font-extrabold text-emerald-600 block">{stats.completed}</span>
+            </div>
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+              <CheckCircle size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">In Progress</span>
+              <span className="text-2xl font-extrabold text-blue-600 block">{stats.ongoing}</span>
+            </div>
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+              <Clock size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Scheduled</span>
+              <span className="text-2xl font-extrabold text-amber-600 block">{stats.upcoming}</span>
+            </div>
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+              <Calendar size={20} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Database Table Card */}
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-8">
+        
+        {/* Filters Toolbar */}
+        <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* Search */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search service, ticket ID..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            {/* Status filter */}
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+              className="px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-600 font-semibold"
+            >
+              <option value="all">All Ticket Statuses</option>
+              <option value="upcoming">Scheduled</option>
+              <option value="ongoing">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            {/* Date Range filter */}
+            <select
+              value={filters.dateRange}
+              onChange={(e) => handleFilterChange("dateRange", e.target.value)}
+              className="px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-600 font-semibold"
+            >
+              <option value="all">All Timelines</option>
+              <option value="today">Scheduled Today</option>
+              <option value="week">Next 7 Days</option>
+              <option value="month">Next 30 Days</option>
+            </select>
+
+          </div>
+        </CardHeader>
+
+        {/* Database List */}
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-12 text-center text-gray-400 space-y-3">
+              <RefreshCw className="animate-spin mx-auto text-blue-500" size={24} />
+              <p className="text-xs">Loading task allocations...</p>
+            </div>
+          ) : filteredBookings.length === 0 ? (
+            <div className="px-6 py-16 text-center max-w-md mx-auto flex flex-col items-center">
+              <div className="w-14 h-14 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                <Info size={24} />
+              </div>
+              <h4 className="text-sm font-bold text-gray-800">No assigned tickets found</h4>
+              <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">
+                You have no active task allocations matching the selected filters.
+              </p>
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-full divide-y divide-gray-100">
+                <thead className="bg-[#F8FAFC]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ticket ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Service Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Schedule Period</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Work Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ticket Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Remarks State</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {filteredBookings.map((b) => (
+                    <tr key={b.booking_id} className="hover:bg-blue-50/10 transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-800">#{b.booking_id}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">⚙️</span>
+                          <span>{b.service_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-gray-700 flex items-center gap-1">
+                            <Calendar size={11} className="text-gray-400" />
+                            {new Date(b.start_date).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(b.start_date).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })} - {new Date(b.end_date).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">{renderWorkStatusChip(b.workstatus)}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">{renderStatusBadge(b)}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">{renderRemarksUpdateBadge(b.remarks_update)}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right text-xs font-semibold">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleViewRemarks(b)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="View Remarks"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(b)}
+                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="Edit Ticket"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View Remarks Modal */}
+      {viewingRemarks && (
+        <Modal isOpen={!!viewingRemarks} onClose={handleCloseRemarks}>
           <ModalHeader>
-            <CardTitle>Update Booking – {editingBooking?.service_name}</CardTitle>
+            <div className="flex items-center gap-2">
+              <span>📝</span>
+              <span>Inspector Remarks (Ticket #{viewingRemarks.booking_id})</span>
+            </div>
           </ModalHeader>
-          <ModalBody>
-            <form onSubmit={handleEditSubmit}>
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700">Work Status *</label>
+          <ModalBody className="space-y-4">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Submitted Remarks</span>
+              <p className="text-xs text-gray-700 mt-1 leading-relaxed whitespace-pre-wrap">
+                {viewingRemarks.remarks || "No remarks notes have been recorded."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Remarks Status</span>
+                <span className="block mt-1">{renderRemarksUpdateBadge(viewingRemarks.remarks_update)}</span>
+              </div>
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Work Status</span>
+                <span className="block mt-1">{renderWorkStatusChip(viewingRemarks.workstatus)}</span>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" onClick={handleCloseRemarks}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* Edit Ticket Modal */}
+      {editingBooking && (
+        <Modal isOpen={!!editingBooking} onClose={handleCancelEdit}>
+          <ModalHeader>
+            <div className="flex items-center gap-2">
+              <span>🔧</span>
+              <span>Update Task Progress (Ticket #{editingBooking.booking_id})</span>
+            </div>
+          </ModalHeader>
+          <form onSubmit={handleEditSubmit}>
+            <ModalBody className="space-y-4">
+              
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                  Work Progress State *
+                </label>
                 <select
                   value={editForm.workstatus}
                   onChange={(e) => setEditForm(prev => ({ ...prev, workstatus: e.target.value }))}
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-700 font-semibold"
                   required
                 >
-                  <option value="pending">Pending</option>
+                  <option value="pending">Pending Allocation</option>
                   <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
+                  <option value="completed">Completed Ticket</option>
                   <option value="hold">On Hold</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Update the current status of your work
-                </p>
               </div>
 
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700">Remarks Status</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                  Remarks Status Update
+                </label>
                 <select
                   value={editForm.remarks_update}
                   onChange={(e) => setEditForm(prev => ({ ...prev, remarks_update: e.target.value }))}
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  disabled
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-700 font-semibold"
                 >
-                  <option value="waiting">Waiting</option>
+                  <option value="waiting">Waiting approval</option>
                   <option value="accepted">Accepted</option>
                   <option value="rejected">Rejected</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Status automatically changes to "Waiting" when remarks are edited
-                </p>
               </div>
 
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700">Remarks</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                  Add Inspector Remarks / Notes
+                </label>
                 <Textarea
                   value={editForm.remarks}
                   onChange={(e) => setEditForm(prev => ({ ...prev, remarks: e.target.value }))}
-                  placeholder="Add your remarks..."
+                  placeholder="Enter service details, notes, or warning observations..."
                   rows={4}
                 />
               </div>
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <div className="flex justify-end space-x-3">
-              <Button variant="secondary" onClick={handleCancelEdit}>Cancel</Button>
-              <Button
-                onClick={handleEditSubmit}
-                disabled={isEditing}
-                loading={isEditing}
-              >
-                {isEditing ? "Updating..." : "Update"}
+
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="secondary" onClick={handleCancelEdit}>
+                Cancel
               </Button>
-            </div>
-          </ModalFooter>
+              <Button type="submit" disabled={isEditing}>
+                {isEditing ? "Saving..." : "Save Progress"}
+              </Button>
+            </ModalFooter>
+          </form>
         </Modal>
+      )}
 
-        {/* VIEW REMARKS MODAL */}
-        <Modal isOpen={!!viewingRemarks} onClose={handleCloseRemarks} size="sm">
-          <ModalHeader>
-            <CardTitle>Remarks – {viewingRemarks?.service_name}</CardTitle>
-          </ModalHeader>
-          <ModalBody>
-            <div className="mb-6">
-              <label className="text-sm font-medium text-gray-700">Remarks:</label>
-              <div className="mt-2 p-4 bg-gray-50 border rounded-lg max-h-48 overflow-y-auto">
-                {viewingRemarks?.remarks ? (
-                  <p className="text-gray-800 whitespace-pre-wrap">{viewingRemarks.remarks}</p>
-                ) : (
-                  <p className="text-gray-400 italic">No remarks available</p>
-                )}
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <div className="flex justify-between">
-              <Button variant="secondary" onClick={handleCloseRemarks}>Close</Button>
-              <Button
-                onClick={() => {
-                  handleCloseRemarks();
-                  handleEditClick(viewingRemarks);
-                }}
-                leftIcon={<Edit size={16} />}
-              >
-                Edit Remarks
-              </Button>
-            </div>
-          </ModalFooter>
-        </Modal>
-
-        {/* TABLE */}
-        {bookings.length === 0 ? (
-          <Card className="animate-fade-in">
-            <CardContent className="p-12 text-center">
-              <h3 className="text-xl font-semibold text-gray-700">
-                {userInfo.role === "worker" 
-                  ? "No bookings assigned to you yet" 
-                  : "No bookings found"}
-              </h3>
-              <p className="text-gray-500 mt-2">
-                {userInfo.role === "worker" 
-                  ? "You don't have any assigned service bookings at the moment." 
-                  : "There are no bookings in the system."}
-              </p>
-              <Button
-                onClick={fetchBookings}
-                className="mt-4"
-                leftIcon={<RefreshCw size={16} />}
-              >
-                Check Again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {[
-                        "Service Details",
-                        "Staff",
-                        "Department",
-                        "Category",
-                        "Price Type",
-                        "Remarks",
-                        "Remarks Status",
-                        "Work Status",
-                        "Timeline",
-                        "Timeline Status",
-                        "Actions",
-                      ].map((h, i) => (
-                        <th
-                          key={i}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredBookings.map((b, idx) => {
-                      const status = getStatus(b.start_date, b.end_date);
-                      const hasRemarks = b.remarks && b.remarks.trim().length > 0;
-
-                      return (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="font-semibold text-gray-900">{b.service_name}</div>
-                            <div className="text-gray-500 text-sm">ID: {b.service_id}</div>
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {b.manpower_name || "-"}
-                            {userInfo?.role === "admin" && (
-                              <div className="text-xs text-blue-600 mt-1">
-                                {b.manpower_name ? "Assigned" : "Unassigned"}
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="px-6 py-4">{b.department || "-"}</td>
-
-                          <td className="px-6 py-4 capitalize">{b.category || "-"}</td>
-
-                          <td className="px-6 py-4">
-                            {b.price_type
-                      ? b.price_type.replace("_", " ").toUpperCase()
-                      : "-"}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {hasRemarks ? (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => handleViewRemarks(b)}
-                                leftIcon={<Eye size={14} />}
-                              >
-                                View Remarks
-                              </Button>
-                            ) : (
-                              <span className="text-gray-400 italic">No remarks</span>
-                            )}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {getRemarksUpdateBadge(b.remarks_update || "waiting")}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {getWorkStatusBadge(b.workstatus || "pending")}
-                          </td>
-
-                          <td className="px-6 py-4 text-sm">
-                            <div>
-                              <strong>Start:</strong>{" "}
-                              {b.start_date
-                                ? new Date(b.start_date).toLocaleString("en-IN")
-                                : "Not set"}
-                            </div>
-                            <div className="text-gray-500 mt-1">
-                              <strong>End:</strong>{" "}
-                              {b.end_date
-                                ? new Date(b.end_date).toLocaleString("en-IN")
-                                : "Not set"}
-                            </div>
-                          </td>
-
-                          <td className="px-6 py-4">{getStatusBadge(status)}</td>
-
-                          <td className="px-6 py-4">
-                            <Button
-                              size="sm"
-                              onClick={() => handleEditClick(b)}
-                              leftIcon={<Edit size={14} />}
-                            >
-                              Add Remarks
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
     </div>
   );
 };

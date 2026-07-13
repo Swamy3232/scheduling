@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { User, Lock, ArrowRight } from "lucide-react";
+import { User, Lock, ArrowRight, ShieldAlert, Settings } from "lucide-react";
 import { Button, Input } from "../components/ui";
 
 const Login = () => {
@@ -22,7 +22,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        "https://manpower.cmti.online/auth/login", 
+        "https://manpower.cmTI.online/auth/login", 
         formData, 
         {
           headers: { "Content-Type": "application/json" },
@@ -67,36 +67,68 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg mb-4">
-            <span className="text-white font-bold text-2xl">CMTI</span>
+    <div className="min-h-screen w-full flex bg-[#F8FAFC]">
+      {/* Left side branding column (visible on md screens up) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 flex-col justify-between p-12 text-white relative overflow-hidden">
+        {/* Decorative Grid Patterns */}
+        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-md border border-white/20">
+            <span className="font-bold text-white text-base">CMTI</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your AMC Portal account</p>
+          <span className="font-bold tracking-tight text-sm uppercase">AMC Scheduler</span>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 animate-slide-up">
+        <div className="space-y-6 relative z-10 max-w-lg">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-200 border border-blue-500/30">
+            <Settings size={12} className="animate-spin-slow" /> Enterprise CMMS Suite
+          </span>
+          <h2 className="text-4xl font-extrabold tracking-tight leading-tight">
+            Industrial Grade AMC Maintenance Scheduler
+          </h2>
+          <p className="text-blue-100 text-sm leading-relaxed">
+            Monitor, assign, and manage workforce allocations, schedules, and costs inside a unified enterprise workflow environment.
+          </p>
+        </div>
+
+        <div className="text-xs text-blue-200/65 relative z-10">
+          © {new Date().getFullYear()} Central Manufacturing Technology Institute. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right side form column */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-white">
+        <div className="w-full max-w-md space-y-8">
+          
+          <div className="text-left space-y-2">
+            {/* Logo for mobile view */}
+            <div className="lg:hidden w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md mb-6">
+              <span className="text-white font-extrabold text-lg">CMTI</span>
+            </div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Sign In</h1>
+            <p className="text-gray-500 text-sm">
+              Please enter your workforce credentials to access the scheduling suite.
+            </p>
+          </div>
+
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
-              <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              {error}
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-center gap-2">
+              <ShieldAlert size={18} className="shrink-0 text-red-500" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="Username"
+              label="Workforce Username"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
               autoComplete="username"
               placeholder="Enter your username"
-              leftIcon={<User size={20} className="text-gray-400" />}
+              leftIcon={<User size={16} className="text-gray-400" />}
             />
 
             <Input
@@ -107,26 +139,24 @@ const Login = () => {
               onChange={handleChange}
               required
               autoComplete="current-password"
-              placeholder="Enter your password"
-              leftIcon={<Lock size={20} className="text-gray-400" />}
+              placeholder="Enter your security password"
+              leftIcon={<Lock size={16} className="text-gray-400" />}
             />
 
-            <Button
-              type="submit"
-              loading={isLoading}
-              fullWidth
-              size="lg"
-              rightIcon={!isLoading && <ArrowRight size={20} />}
-            >
-              {isLoading ? "Signing In..." : "Sign In"}
-            </Button>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                loading={isLoading}
+                fullWidth
+                size="lg"
+                className="h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-100"
+                rightIcon={!isLoading && <ArrowRight size={18} />}
+              >
+                {isLoading ? "Authenticating..." : "Sign In to Portal"}
+              </Button>
+            </div>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-            <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} CMTI — All Rights Reserved
-            </p>
-          </div>
         </div>
       </div>
     </div>

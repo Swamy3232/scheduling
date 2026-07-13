@@ -27,8 +27,11 @@ import {
   Clock,
   TrendingUp,
   RefreshCw,
+  Info,
+  Layers,
+  Award
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, Button, Modal, ModalHeader, ModalBody, ModalFooter, StatusBadge } from "../components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Modal, ModalHeader, ModalBody, ModalFooter } from "../components/ui";
 
 ChartJS.register(
   CategoryScale,
@@ -39,7 +42,6 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
 
 const BookingDashboard = () => {
   const [events, setEvents] = useState([]);
@@ -150,14 +152,12 @@ const BookingDashboard = () => {
   }, [events, filters]);
 
   const getChartData = () => {
-    // Category distribution
     const categories = {};
     filteredEvents.forEach(event => {
       const cat = event.extendedProps.category;
       categories[cat] = (categories[cat] || 0) + 1;
     });
 
-    // Department distribution
     const departments = {};
     filteredEvents.forEach(event => {
       const dept = event.extendedProps.department;
@@ -201,432 +201,379 @@ const BookingDashboard = () => {
     console.log("Date clicked:", info.dateStr);
   };
 
-  const exportData = () => {
-    const exportEvents = filteredEvents.map(event => ({
-      BookingID: event.extendedProps.bookingId,
-      Service: event.extendedProps.serviceName,
-      Manpower: event.extendedProps.manpowerName,
-      Category: event.extendedProps.category,
-      Department: event.extendedProps.department,
-      Start: event.start,
-      End: event.end,
-      Duration: `${event.extendedProps.duration} hours`,
-      AssignedBy: event.extendedProps.assignedBy,
-      PriceType: event.extendedProps.priceType,
-      Status: event.extendedProps.remarksUpdate
-    }));
+  // Get unique filters
+  const filterOptions = useMemo(() => {
+    const categories = [...new Set(events.map(e => e.extendedProps.category))];
+    const departments = [...new Set(events.map(e => e.extendedProps.department))];
+    const manpower = [...new Set(events.map(e => e.extendedProps.manpowerName))];
+    return { categories, departments, manpower };
+  }, [events]);
 
-    const csvContent = [
-      Object.keys(exportEvents[0]).join(","),
-      ...exportEvents.map(e => Object.values(e).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bookings_export.csv';
-    a.click();
+  const renderRemarksUpdateBadge = (ru) => {
+    const val = (ru || "waiting").toLowerCase();
+    switch (val) {
+      case "accepted":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">Accepted</span>;
+      case "rejected":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">Rejected</span>;
+      case "waiting":
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">Waiting</span>;
+    }
   };
 
-  const ViewSelector = () => (
-    <div className="flex space-x-2 mb-6">
-      <Button
-        variant={viewMode === "calendar" ? "primary" : "secondary"}
-        onClick={() => setViewMode("calendar")}
-        leftIcon={<Calendar size={20} />}
-      >
-        Calendar
-      </Button>
-      <Button
-        variant={viewMode === "analytics" ? "primary" : "secondary"}
-        onClick={() => setViewMode("analytics")}
-        leftIcon={<BarChart3 size={20} />}
-      >
-        Analytics
-      </Button>
-      <Button
-        variant={viewMode === "list" ? "primary" : "secondary"}
-        onClick={() => setViewMode("list")}
-        leftIcon={<Eye size={20} />}
-      >
-        List View
-      </Button>
-    </div>
-  );
+  return (
+    <div className="w-full px-6 py-8 max-w-none">
+      
+      {/* Top Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-all duration-300">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Calendar size={32} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <span>📅</span> Master Schedule Calendar
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              Visualize service timelines, tracking ongoing operations, and analyze departmental cost distributions.
+            </p>
+          </div>
+        </div>
 
-  const StatsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Bookings</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-            </div>
-            <Calendar className="text-blue-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Active Manpower</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeManpower}</p>
-            </div>
-            <Users className="text-green-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Departments</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.departments}</p>
-            </div>
-            <Building className="text-purple-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Hours Booked</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.hoursBooked}h</p>
-            </div>
-            <Clock className="text-orange-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const FiltersPanel = () => {
-    const uniqueCategories = [...new Set(events.map(e => e.extendedProps.category))];
-    const uniqueDepartments = [...new Set(events.map(e => e.extendedProps.department))];
-    const uniqueManpower = [...new Set(events.map(e => e.extendedProps.manpowerName))];
-
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
-              <Filter size={20} />
-              <span>Filters</span>
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFilters({ category: "all", department: "all", manpower: "all" })}
+        {/* View togglers */}
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-xl">
+            <button
+              onClick={() => setViewMode("calendar")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-800"
+              }`}
             >
-              Clear All
-            </Button>
+              Calendar
+            </button>
+            <button
+              onClick={() => setViewMode("analytics")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "analytics" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Analytics
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "list" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Table View
+            </button>
           </div>
-        </CardHeader>
-        <CardContent>
+          <Button
+            variant="secondary"
+            onClick={fetchBookings}
+            className="h-11 rounded-xl bg-white border border-gray-200 shadow-sm text-gray-700 font-medium px-4"
+            leftIcon={<RefreshCw size={16} className={loading ? "animate-spin" : ""} />}
+          >
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Allocations</span>
+              <span className="text-2xl font-extrabold text-gray-800 block">{stats.totalBookings}</span>
+            </div>
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+              <Calendar size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Active Engineers</span>
+              <span className="text-2xl font-extrabold text-indigo-600 block">{stats.activeManpower}</span>
+            </div>
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Users size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Active Clients</span>
+              <span className="text-2xl font-extrabold text-purple-600 block">{stats.departments}</span>
+            </div>
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+              <Building size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Inspected Hours</span>
+              <span className="text-2xl font-extrabold text-emerald-600 block">{stats.hoursBooked}h</span>
+            </div>
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+              <Clock size={20} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Advanced Filters toolbar */}
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-8">
+        <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            
+            {/* Category */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
               <select
                 value={filters.category}
-                onChange={(e) => setFilters({...filters, category: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white font-semibold text-gray-600"
               >
                 <option value="all">All Categories</option>
-                {uniqueCategories.map(cat => (
+                {filterOptions.categories.filter(Boolean).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+
+            {/* Department */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Department</label>
               <select
                 value={filters.department}
-                onChange={(e) => setFilters({...filters, department: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white font-semibold text-gray-600"
               >
                 <option value="all">All Departments</option>
-                {uniqueDepartments.map(dept => (
+                {filterOptions.departments.filter(Boolean).map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Manpower</label>
+
+            {/* Manpower */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Engineer</label>
               <select
                 value={filters.manpower}
-                onChange={(e) => setFilters({...filters, manpower: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setFilters(prev => ({ ...prev, manpower: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white font-semibold text-gray-600"
               >
-                <option value="all">All Manpower</option>
-                {uniqueManpower.map(mp => (
+                <option value="all">All Engineers</option>
+                {filterOptions.manpower.filter(Boolean).map(mp => (
                   <option key={mp} value={mp}>{mp}</option>
                 ))}
               </select>
             </div>
+
           </div>
         </CardContent>
       </Card>
-    );
-  };
 
-  const EventDetailsModal = () => {
-    if (!selectedEvent) return null;
-
-    return (
-      <Modal isOpen={!!selectedEvent} onClose={() => setSelectedEvent(null)} size="sm">
-        <ModalHeader>
-          <CardTitle>Booking Details</CardTitle>
-        </ModalHeader>
-        <ModalBody>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Service:</span>
-              <span className="font-medium">{selectedEvent.serviceName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Manpower:</span>
-              <span className="font-medium">{selectedEvent.manpowerName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Duration:</span>
-              <span className="font-medium">{selectedEvent.duration} hours</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Category:</span>
-              <span className="font-medium capitalize">{selectedEvent.category}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Department:</span>
-              <span className="font-medium">{selectedEvent.department}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Price Type:</span>
-              <span className="font-medium">{selectedEvent.priceType}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Status:</span>
-              <StatusBadge 
-                status={selectedEvent.remarksUpdate === 'completed' ? 'inactive' : selectedEvent.remarksUpdate === 'waiting' ? 'pending' : 'active'} 
-                label={selectedEvent.remarksUpdate || 'pending'}
+      {/* Main View Area */}
+      {loading ? (
+        <div className="p-12 text-center text-gray-400 space-y-3 bg-white rounded-2xl border border-gray-100">
+          <RefreshCw className="animate-spin mx-auto text-blue-500" size={24} />
+          <p className="text-xs">Generating schedule workspace...</p>
+        </div>
+      ) : viewMode === "calendar" ? (
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white p-6 overflow-hidden">
+          <div className="fc-theme-premium">
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: "prev,next today",
+                center: "title",
+                right: "dayGridMonth,timeGridWeek,timeGridDay"
+              }}
+              events={filteredEvents}
+              eventClick={handleEventClick}
+              dateClick={handleDateClick}
+              editable={false}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              height="auto"
+            />
+          </div>
+        </Card>
+      ) : viewMode === "analytics" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white p-6">
+            <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-1.5">
+              <PieChart size={16} /> Category Allocations
+            </CardTitle>
+            <div className="h-64 flex items-center justify-center">
+              <Pie 
+                data={chartData.categoryData} 
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { position: 'bottom' } }
+                }}
               />
             </div>
-            {selectedEvent.remarks && (
-              <div className="mt-4 p-3 bg-gray-50 rounded">
-                <p className="text-sm text-gray-600">Remarks:</p>
-                <p className="mt-1">{selectedEvent.remarks}</p>
-              </div>
-            )}
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button onClick={() => setSelectedEvent(null)} fullWidth>Close</Button>
-        </ModalFooter>
-      </Modal>
-    );
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Booking Dashboard</h1>
-            <p className="text-gray-600">Manage and analyze all bookings in one place</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={fetchBookings}
-              leftIcon={<RefreshCw size={20} />}
-            >
-              Refresh
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={exportData}
-              leftIcon={<Download size={20} />}
-            >
-              Export CSV
-            </Button>
-          </div>
-        </div>
-
-        <StatsCards />
-        <ViewSelector />
-        <FiltersPanel />
-
-        {loading ? (
-          <Card className="animate-fade-in">
-            <CardContent className="p-12 text-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="text-gray-500">Loading bookings...</span>
-              </div>
-            </CardContent>
           </Card>
-        ) : (
-          <>
-            {viewMode === "calendar" && (
-              <Card>
-                <CardContent className="p-4">
-                  <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                    initialView="dayGridMonth"
-                    headerToolbar={{
-                      left: "prev,next today",
-                      center: "title",
-                      right: "dayGridMonth,timeGridWeek,timeGridDay"
-                    }}
-                    events={filteredEvents}
-                    eventClick={handleEventClick}
-                    dateClick={handleDateClick}
-                    height="70vh"
-                    weekends={true}
-                    editable={true}
-                    selectable={true}
-                    dayMaxEvents={3}
-                  />
-                </CardContent>
-              </Card>
-            )}
 
-            {viewMode === "analytics" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <PieChart size={20} />
-                      <span>Category Distribution</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <Pie 
-                        data={chartData.categoryData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <BarChart3 size={20} />
-                      <span>Department Bookings</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <Bar 
-                        data={chartData.departmentData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              ticks: {
-                                stepSize: 1
-                              }
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white p-6">
+            <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-1.5">
+              <BarChart3 size={16} /> Department Bookings
+            </CardTitle>
+            <div className="h-64 flex items-center justify-center">
+              <Bar 
+                data={chartData.departmentData} 
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } }
+                }}
+              />
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+          <CardContent className="p-0">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-full divide-y divide-gray-100">
+                <thead className="bg-[#F8FAFC]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Service Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Engineer</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Timeline</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {filteredEvents.map((event) => {
+                    const props = event.extendedProps;
+                    return (
+                      <tr key={event.id} className="hover:bg-blue-50/10 transition-colors">
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-800">#{event.id}</td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <span>⚙️</span>
+                            <span>{props.serviceName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">
+                              {props.manpowerName ? props.manpowerName.charAt(0).toUpperCase() : "U"}
+                            </div>
+                            <span>{props.manpowerName || "Unassigned"}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-600">{props.department || "-"}</td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-gray-700 flex items-center gap-1">
+                              <Calendar size={11} className="text-gray-400" />
+                              {new Date(event.start).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(event.start).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })} - {new Date(event.end).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-right text-xs font-semibold">
+                          <button
+                            onClick={() => setSelectedEvent(props)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="View Details"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Selected Event Details Modal */}
+      {selectedEvent && (
+        <Modal isOpen={!!selectedEvent} onClose={() => setSelectedEvent(null)}>
+          <ModalHeader>
+            <div className="flex items-center gap-2">
+              <span>📅</span>
+              <span>Allocated Task Details</span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Service Template</span>
+              <h4 className="text-xs font-extrabold text-gray-800 mt-1 flex items-center gap-2">
+                <span>⚙️</span> {selectedEvent.serviceName}
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Assigned Engineer</span>
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5 mt-1">
+                  <span className="w-5 h-5 bg-blue-50 text-blue-600 flex items-center justify-center font-bold rounded-full text-[9px]">
+                    {selectedEvent.manpowerName ? selectedEvent.manpowerName.charAt(0).toUpperCase() : "U"}
+                  </span>
+                  {selectedEvent.manpowerName || "Unassigned"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Department / Client</span>
+                <span className="text-xs font-bold text-gray-700 mt-1 block">{selectedEvent.department || "-"}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Remarks Verification</span>
+                <span className="block mt-1">{renderRemarksUpdateBadge(selectedEvent.remarksUpdate)}</span>
+              </div>
+              <div>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Inspected duration</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded mt-1">
+                  <Clock size={10} /> {selectedEvent.duration} Hours
+                </span>
+              </div>
+            </div>
+
+            {selectedEvent.remarks && (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Observations Notes</span>
+                <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">{selectedEvent.remarks}</p>
               </div>
             )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
+              Close Details
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
 
-            {viewMode === "list" && (
-              <Card className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manpower</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredEvents.map((event) => (
-                          <tr key={event.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{event.extendedProps.serviceName}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{event.extendedProps.manpowerName}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
-                                {new Date(event.start).toLocaleDateString()}
-                                <br />
-                                <span className="text-gray-500 text-xs">
-                                  {new Date(event.start).toLocaleTimeString()} - {new Date(event.end).toLocaleTimeString()}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                {event.extendedProps.duration}h
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 py-1 text-xs font-medium rounded-full capitalize"
-                                    style={{ 
-                                      backgroundColor: `${getEventColor(event.extendedProps.category)}20`,
-                                      color: getEventColor(event.extendedProps.category)
-                                    }}>
-                                {event.extendedProps.category}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <StatusBadge 
-                                status={event.extendedProps.remarksUpdate === 'completed' ? 'inactive' : event.extendedProps.remarksUpdate === 'waiting' ? 'pending' : 'active'} 
-                                label={event.extendedProps.remarksUpdate || 'pending'}
-                              />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedEvent({
-                                  ...event.extendedProps,
-                                  title: event.title,
-                                  start: event.start,
-                                  end: event.end
-                                })}
-                              >
-                                View Details
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-      </div>
-
-      <EventDetailsModal />
     </div>
   );
 };

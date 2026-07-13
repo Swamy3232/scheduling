@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { RefreshCw, Search, Filter, Bell, CheckCircle, XCircle, Eye } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, ModalHeader, ModalBody, ModalFooter, StatusBadge } from "../components/ui";
+import { RefreshCw, Search, Filter, Bell, CheckCircle, XCircle, Eye, Info, Calendar, UserCheck, AlertTriangle } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, Button, Modal, ModalHeader, ModalBody, ModalFooter } from "../components/ui";
 
 const API_URL = "https://manpower.cmti.online/bookings/";
 
@@ -21,9 +21,7 @@ export default function Notifications() {
     try {
       setLoading(true);
       setError(null);
-      console.log("Fetching bookings from:", API_URL);
       const res = await axios.get(API_URL);
-      console.log("API Response:", res.data);
       
       if (Array.isArray(res.data)) {
         // Filter out bookings that have remarks AND remarks_update is "waiting"
@@ -32,10 +30,8 @@ export default function Notifications() {
           booking.remarks.trim().length > 0 &&
           booking.remarks_update === "waiting"
         );
-        console.log("Bookings with waiting remarks:", waitingRemarks.length);
         setNotifications(waitingRemarks);
       } else {
-        console.error("Unexpected response format:", res.data);
         setNotifications([]);
       }
     } catch (error) {
@@ -55,9 +51,8 @@ export default function Notifications() {
   const updateRemarksStatus = async (bookingId, newStatus) => {
     try {
       setUpdatingStatus(bookingId);
-      console.log("Updating remarks status for booking:", bookingId, "to:", newStatus);
 
-      const res = await axios.put(
+      await axios.put(
         `https://manpower.cmti.online/bookings/${bookingId}`,
         null,
         { 
@@ -66,8 +61,6 @@ export default function Notifications() {
           } 
         }
       );
-
-      console.log("Update response:", res.data);
       
       // Remove the booking from notifications after successful update
       setNotifications(prev => prev.filter(notification => 
@@ -125,25 +118,6 @@ export default function Notifications() {
     });
   }, [notifications, filters]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "approved":
-        return "bg-green-100 text-green-700";
-      case "rejected":
-        return "bg-red-100 text-red-700";
-      case "completed":
-        return "bg-blue-100 text-blue-700";
-      case "upcoming":
-        return "bg-purple-100 text-purple-700";
-      case "ongoing":
-        return "bg-orange-100 text-orange-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
-
   const getStatusFromDates = (startDate, endDate) => {
     if (!startDate || !endDate) return "unknown";
 
@@ -158,26 +132,8 @@ export default function Notifications() {
     return "unknown";
   };
 
-  const getRemarksUpdateBadge = (remarks_update) => {
-    const statusMap = {
-      waiting: "pending",
-      accepted: "active",
-      rejected: "inactive"
-    };
-    const labelMap = {
-      waiting: "Waiting",
-      accepted: "Accepted",
-      rejected: "Rejected"
-    };
-    return <StatusBadge status={statusMap[remarks_update] || "pending"} label={labelMap[remarks_update] || "Waiting"} />;
-  };
-
   const handleFilterChange = (type, value) => {
     setFilters(prev => ({ ...prev, [type]: value }));
-  };
-
-  const handleRetry = () => {
-    fetchNotifications();
   };
 
   const handleViewRemarks = (notification) => {
@@ -192,237 +148,259 @@ export default function Notifications() {
     updateRemarksStatus(notification.booking_id, newStatus);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-500">Loading notifications...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <Bell size={48} className="text-red-500 opacity-30" />
-              <h3 className="text-lg font-semibold text-red-800">Error Loading Notifications</h3>
-              <p className="text-red-600">{error}</p>
-              <Button variant="danger" onClick={handleRetry}>Try Again</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Status mapping
+  const renderStatusBadge = (b) => {
+    const s = getStatusFromDates(b.start_date, b.end_date);
+    switch (s) {
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-50 text-gray-700 border border-gray-200">
+            Completed
+          </span>
+        );
+      case "ongoing":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+            Ongoing
+          </span>
+        );
+      case "upcoming":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+            Scheduled
+          </span>
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-8">
-        {/* View Remarks Modal */}
-        <Modal isOpen={!!viewingRemarks} onClose={handleCloseRemarks} size="sm">
-          <ModalHeader>
-            <CardTitle>Remarks – {viewingRemarks?.service_name}</CardTitle>
-          </ModalHeader>
-          <ModalBody>
-            <label className="text-sm font-medium text-gray-700">Remarks:</label>
-            <div className="mt-2 p-4 bg-gray-50 border rounded-lg max-h-48 overflow-y-auto">
-              <p className="text-gray-800 whitespace-pre-wrap">{viewingRemarks?.remarks}</p>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={handleCloseRemarks} fullWidth>Close</Button>
-          </ModalFooter>
-        </Modal>
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pending Remarks Approval</h1>
-            <p className="text-gray-600">Review and manage remarks awaiting approval</p>
+    <div className="w-full px-6 py-8 max-w-none">
+      
+      {/* Top Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-all duration-300">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Bell size={32} />
           </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <span>🔔</span> Pending Remarks Approvals
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              Review workforce ticket submissions, inspect recorded warning notes, and approve cost audits.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
           <Button
             variant="secondary"
             onClick={fetchNotifications}
-            leftIcon={<RefreshCw size={20} />}
+            className="h-11 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 font-medium px-4 text-gray-700 shadow-sm"
+            leftIcon={<RefreshCw size={16} className={loading ? "animate-spin" : ""} />}
           >
             Refresh
           </Button>
         </div>
+      </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                label="Search"
-                placeholder="Search remarks..."
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+          <AlertTriangle className="text-red-600 shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="text-xs text-red-700 font-semibold">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters Toolbar */}
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-8">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Search */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by service name, engineer..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                leftIcon={<Search size={18} className="text-gray-400" />}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
               />
+            </div>
+
+            {/* Date Range filter */}
+            <select
+              value={filters.dateRange}
+              onChange={(e) => handleFilterChange("dateRange", e.target.value)}
+              className="px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-600 font-semibold"
+            >
+              <option value="all">All Timelines</option>
+              <option value="today">Today</option>
+              <option value="week">Next 7 Days</option>
+              <option value="month">Next 30 Days</option>
+            </select>
+
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Inbox Database List */}
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-8">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-12 text-center text-gray-400 space-y-3">
+              <RefreshCw className="animate-spin mx-auto text-blue-500" size={24} />
+              <p className="text-xs">Fetching pending approval logs...</p>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="px-6 py-16 text-center max-w-md mx-auto flex flex-col items-center">
+              <div className="w-14 h-14 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                <Info size={24} />
+              </div>
+              <h4 className="text-sm font-bold text-gray-800">Clear Inbox</h4>
+              <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">
+                There are currently no workforce inspection remarks waiting for administrative review.
+              </p>
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-full divide-y divide-gray-100">
+                <thead className="bg-[#F8FAFC]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ticket ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Service Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Engineer</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Remarks Observation Notes</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Timeline</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {filteredNotifications.map((n) => (
+                    <tr key={n.booking_id} className="hover:bg-blue-50/10 transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-800">#{n.booking_id}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs font-bold text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <span>⚙️</span>
+                          <span>{n.service_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">
+                            {n.manpower_name ? n.manpower_name.charAt(0).toUpperCase() : "U"}
+                          </div>
+                          <span>{n.manpower_name || "Unassigned"}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-gray-500 max-w-xs truncate" title={n.remarks}>
+                        {n.remarks}
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-gray-700 flex items-center gap-1">
+                            <Calendar size={11} className="text-gray-400" />
+                            {new Date(n.start_date).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">{renderStatusBadge(n)}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right text-xs font-semibold">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleViewRemarks(n)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="View Remarks Detail"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(n, "accepted")}
+                            disabled={updatingStatus === n.booking_id}
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="Accept Remarks"
+                          >
+                            <CheckCircle size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(n, "rejected")}
+                            disabled={updatingStatus === n.booking_id}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                            title="Reject Remarks"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Remarks Dialog Sheet */}
+      {viewingRemarks && (
+        <Modal isOpen={!!viewingRemarks} onClose={handleCloseRemarks}>
+          <ModalHeader>
+            <div className="flex items-center gap-2">
+              <span>📋</span>
+              <span>Workforce Observation Review</span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Service Item</span>
+              <h4 className="text-xs font-extrabold text-gray-800 mt-1">⚙️ {viewingRemarks.service_name}</h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="ongoing">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Submitting Engineer</span>
+                <span className="text-xs font-bold text-gray-700 mt-1 block">{viewingRemarks.manpower_name || "Unassigned"}</span>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                <select
-                  value={filters.dateRange}
-                  onChange={(e) => handleFilterChange("dateRange", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="week">Next 7 Days</option>
-                  <option value="month">Next 30 Days</option>
-                </select>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Department / Client</span>
+                <span className="text-xs font-bold text-gray-700 mt-1 block">{viewingRemarks.department || "-"}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Notifications Count */}
-        <div className="mb-4 text-sm text-gray-600">
-          Showing {filteredNotifications.length} pending remarks awaiting approval
-        </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Observation Details</span>
+              <p className="text-xs text-gray-700 mt-1 leading-relaxed whitespace-pre-wrap">{viewingRemarks.remarks}</p>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" onClick={handleCloseRemarks}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                handleStatusChange(viewingRemarks, "rejected");
+                handleCloseRemarks();
+              }}
+            >
+              Reject Notes
+            </Button>
+            <Button
+              onClick={() => {
+                handleStatusChange(viewingRemarks, "accepted");
+                handleCloseRemarks();
+              }}
+            >
+              Approve Remarks
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
 
-        {/* Notifications List */}
-        <div className="space-y-4">
-          {filteredNotifications.length === 0 ? (
-            <Card className="animate-fade-in">
-              <CardContent className="p-12 text-center">
-                <div className="flex flex-col items-center gap-3 text-gray-500">
-                  <Bell size={48} className="opacity-30" />
-                  <p className="text-lg">No pending remarks found</p>
-                  <p className="text-sm">All remarks have been processed or no remarks awaiting approval</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredNotifications.map((notification, index) => {
-              const status = notification.status || getStatusFromDates(
-                notification.start_date, 
-                notification.end_date
-              );
-
-              return (
-                <Card key={index} className="animate-slide-up hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    {/* Header: Service + Status */}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {notification.service_name || "Unnamed Service"}
-                        </h3>
-                        {notification.service_id && (
-                          <p className="text-sm text-gray-500">
-                            Service ID: {notification.service_id}
-                          </p>
-                        )}
-                      </div>
-                      <StatusBadge status={status === "completed" ? "inactive" : status === "ongoing" ? "active" : "pending"} />
-                    </div>
-
-                    {/* Manpower */}
-                    <p className="text-gray-700 mt-3">
-                      <strong>Manpower:</strong> {notification.manpower_name || notification.manpower || "Not assigned"}
-                    </p>
-
-                    {/* Department and Category */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                      {notification.department && (
-                        <p className="text-gray-700 text-sm">
-                          <strong>Department:</strong> {notification.department}
-                        </p>
-                      )}
-                      {notification.category && (
-                        <p className="text-gray-700 text-sm">
-                          <strong>Category:</strong> {notification.category}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Timeline */}
-                    {notification.start_date && (
-                      <p className="text-gray-700 text-sm mt-2">
-                        <strong>Timeline:</strong>{" "}
-                        {new Date(notification.start_date).toLocaleDateString()} →{" "}
-                        {notification.end_date 
-                          ? new Date(notification.end_date).toLocaleDateString()
-                          : "Not set"}
-                      </p>
-                    )}
-
-                    {/* Remarks Status and Actions */}
-                    <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <span className="text-sm text-gray-600 mr-2">Status:</span>
-                          {getRemarksUpdateBadge(notification.remarks_update || "waiting")}
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            variant="success"
-                            onClick={() => handleStatusChange(notification, "accepted")}
-                            disabled={updatingStatus === notification.booking_id}
-                            loading={updatingStatus === notification.booking_id}
-                            leftIcon={<CheckCircle size={16} />}
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => handleStatusChange(notification, "rejected")}
-                            disabled={updatingStatus === notification.booking_id}
-                            loading={updatingStatus === notification.booking_id}
-                            leftIcon={<XCircle size={16} />}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleViewRemarks(notification)}
-                        leftIcon={<Eye size={16} />}
-                      >
-                        View Remarks
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
-      </div>
     </div>
   );
 }

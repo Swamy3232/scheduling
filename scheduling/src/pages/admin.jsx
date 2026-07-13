@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { UserPlus, Mail, Lock, User, CheckCircle, XCircle } from "lucide-react";
+import { UserPlus, Mail, Lock, User, CheckCircle, XCircle, Shield, Sliders } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from "../components/ui";
 
 export default function Signup() {
@@ -10,7 +10,7 @@ export default function Signup() {
     password: "",
     role: "worker",
   });
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -50,7 +50,7 @@ export default function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
+    setMessage(null);
     setErrors({});
 
     if (!validateForm()) {
@@ -119,114 +119,154 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
-                <UserPlus size={28} className="text-white" />
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Worker Account</h1>
-            <p className="text-gray-600">Add new team member to the system</p>
+    <div className="w-full px-6 py-8 max-w-none">
+      
+      {/* Top Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Sliders size={32} />
           </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <span>⚙️</span> System Administration
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              Configure system roles, manage users, and create workforce accounts.
+            </p>
+          </div>
+        </div>
+      </div>
 
-          <Card className="animate-slide-up">
-            <CardContent className="p-8">
-              {message && (
-                <div className={`mb-6 p-4 rounded-xl border-2 ${
-                  message.type === "success" 
-                    ? "bg-green-50 text-green-700 border-green-200" 
-                    : "bg-red-50 text-red-700 border-red-200"
-                }`}>
-                  <div className="flex items-center">
-                    {message.type === "success" ? (
-                      <CheckCircle size={20} className="mr-3" />
-                    ) : (
-                      <XCircle size={20} className="mr-3" />
-                    )}
-                    <span className="font-medium">{message.text}</span>
-                  </div>
-                </div>
-              )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Info Panel */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-2 border-b border-gray-50 bg-gray-50/20">
+              <CardTitle className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Shield size={16} className="text-blue-500" /> Administrative Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                As an administrator, you can provision accounts with specific permissions. Ensure that you select the appropriate role:
+              </p>
+              
+              <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100/50 space-y-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800">
+                  Project Associate
+                </span>
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  Default workforce credentials. Allows logging in to view assigned slots, request leaves, and manage tasks.
+                </p>
+              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <Input
-                  label="Worker Username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  error={errors.username}
-                  placeholder="Enter worker username"
-                  leftIcon={<User size={18} className="text-gray-400" />}
-                  required
-                />
-
-                <Input
-                  label="Worker Email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={errors.email}
-                  placeholder="Enter worker email address"
-                  leftIcon={<Mail size={18} className="text-gray-400" />}
-                  required
-                />
-
-                <Input
-                  label="Worker Password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={errors.password}
-                  placeholder="Set worker password"
-                  leftIcon={<Lock size={18} className="text-gray-400" />}
-                  required
-                />
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Worker Role
-                  </label>
-                  <select
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    required
-                  >
-                    <option value="user">Project Associate</option>
-                    <option value="admin">Administrator</option>
-                  </select>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  loading={isLoading}
-                  fullWidth
-                  size="lg"
-                  leftIcon={<UserPlus size={20} />}
-                >
-                  Create Worker Account
-                </Button>
-              </form>
-
-              <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                <p className="text-gray-500 text-sm">
-                  Manage existing workers?{" "}
-                  <a href="/workers" className="text-blue-600 hover:text-blue-800 font-semibold transition-colors">
-                    View all workers
-                  </a>
+              <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100/50 space-y-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800">
+                  Administrator
+                </span>
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  Full administrative permissions. Allows creating bookings, managing catalogs, and downloading cost reports.
                 </p>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Right Form Card */}
+        <div className="lg:col-span-2">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
+              <CardTitle className="text-base font-bold text-gray-800">Provision User Account</CardTitle>
+              <p className="text-xs text-gray-400 mt-1">Configure credentials for the new team member</p>
+            </CardHeader>
+            <CardContent className="p-6">
+              
+              {message && (
+                <div className={`mb-6 p-4 rounded-xl border font-semibold flex items-center gap-2 shadow-sm ${
+                  message.type === "success" 
+                    ? "bg-green-50 text-green-700 border-green-200" 
+                    : "bg-red-50 text-red-700 border-red-200"
+                }`}>
+                  {message.type === "success" ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                  <span>{message.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input
+                    label="Username *"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    error={errors.username}
+                    placeholder="e.g. JohnDoe"
+                    leftIcon={<User size={16} className="text-gray-400" />}
+                    required
+                  />
+
+                  <Input
+                    label="Email Address *"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    error={errors.email}
+                    placeholder="e.g. john@cmti.online"
+                    leftIcon={<Mail size={16} className="text-gray-400" />}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input
+                    label="Password *"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    error={errors.password}
+                    placeholder="Set temporary password"
+                    leftIcon={<Lock size={16} className="text-gray-400" />}
+                    required
+                  />
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                      Assign Role *
+                    </label>
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white text-gray-700 font-semibold"
+                      required
+                    >
+                      <option value="worker">Project Associate</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-50 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    loading={isLoading}
+                    className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 shadow-sm shadow-blue-100"
+                    leftIcon={<UserPlus size={18} />}
+                  >
+                    Create Member Account
+                  </Button>
+                </div>
+              </form>
+
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
     </div>
   );

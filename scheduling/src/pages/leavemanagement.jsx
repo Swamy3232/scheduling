@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Users, Calendar, CheckCircle, Info, RefreshCw, LogOut, AlertCircle, X, Trash2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, StatusBadge } from "../components/ui";
+import { Users, Calendar, CheckCircle, Info, RefreshCw, LogOut, AlertCircle, X, Trash2, CalendarIcon } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, Button, Input } from "../components/ui";
 
 const API_URL = "https://manpower.cmti.online";
 
@@ -28,19 +28,13 @@ export default function ManpowerLeaveManager() {
     
     const checkUserAuth = () => {
       const storedUser = localStorage.getItem("user");
-      console.log("Raw localStorage 'user' value:", storedUser);
       
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log("✅ Parsed user object:", parsedUser);
-          
-          // Check if we have the required fields
           if (parsedUser.username && parsedUser.role) {
-            console.log("✅ Valid user found:", parsedUser.username, "Role:", parsedUser.role);
             setUserInfo(parsedUser);
           } else {
-            console.warn("⚠️ User object missing required fields:", parsedUser);
             showNotification("Invalid user session. Please login again.", "error");
             setTimeout(() => navigate("/login"), 2000);
           }
@@ -50,7 +44,6 @@ export default function ManpowerLeaveManager() {
           setTimeout(() => navigate("/login"), 2000);
         }
       } else {
-        console.log("❌ No user found in localStorage");
         showNotification("Please login to access this page", "error");
         setTimeout(() => navigate("/login"), 2000);
       }
@@ -80,33 +73,15 @@ export default function ManpowerLeaveManager() {
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/manpower/all`);
-      console.log("📊 Raw manpower data count:", res.data.length);
-      
       let filteredData = res.data;
       
       // Filter based on user role
       if (userInfo.role === "worker" && userInfo.username) {
-        // Show only manpower entries that match the logged-in worker's name
         filteredData = res.data.filter(employee => {
           const employeeNameNormalized = normalizeName(employee.name);
           const userNameNormalized = normalizeName(userInfo.username);
-          const matches = employeeNameNormalized === userNameNormalized;
-          
-          if (matches) {
-            console.log("✅ Found manpower entry for worker:", employee.name);
-          }
-          return matches;
+          return employeeNameNormalized === userNameNormalized;
         });
-        
-        console.log(`Filtered for worker "${userInfo.username}":`, filteredData.length, "entries");
-        
-        if (filteredData.length === 0) {
-          console.log("ℹ️ No manpower entries found for worker:", userInfo.username);
-          console.log("Sample manpower entry to check:", res.data[0]);
-        }
-      } else if (userInfo.role === "admin") {
-        // Admin sees all manpower entries
-        console.log("👑 Admin viewing all manpower entries");
       }
       
       setManpower(filteredData);
@@ -159,15 +134,6 @@ export default function ManpowerLeaveManager() {
     }
   }, [userInfo, fetchManpower]);
 
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 3);
-  };
-
   const handleDateChange = (normalizedName, value) => {
     setLeaveUpdates(prev => ({ 
       ...prev, 
@@ -198,22 +164,36 @@ export default function ManpowerLeaveManager() {
       showNotification(`Leave date updated for ${nameData.displayName}. Service bookings will be updated automatically.`, "success");
       markAsUpdated(nameData.normalizedName);
       
-      setLeaveUpdates(prev => {
-        const newUpdates = { ...prev };
-        delete newUpdates[nameData.normalizedName];
-        return newUpdates;
-      });
+      // Update local state
+      setUniqueNames(prev => prev.map(item => {
+        if (item.normalizedName === nameData.normalizedName) {
+          return { ...item, leave_date: newLeaveDate + 'T00:00:00' };
+        }
+        return item;
+      }));
 
+      // Clear input field
+      setLeaveUpdates(prev => {
+        const copy = { ...prev };
+        delete copy[nameData.normalizedName];
+        return copy;
+      });
+      
       await fetchManpower();
       
-    } catch (err) {
-      showNotification("Update completed", "success");
+    } catch (error) {
+      console.error("Error updating leave date:", error);
+      showNotification(error.response?.data?.detail || "Failed to update leave date", "error");
     } finally {
       setUpdating(prev => ({ ...prev, [nameData.normalizedName]: false }));
     }
   };
 
   const clearLeaveDate = async (nameData) => {
+    if (!window.confirm(`Are you sure you want to clear the leave date for ${nameData.displayName}?`)) {
+      return;
+    }
+
     setUpdating(prev => ({ ...prev, [nameData.normalizedName]: true }));
 
     try {
@@ -226,350 +206,197 @@ export default function ManpowerLeaveManager() {
       );
 
       await Promise.all(updatePromises);
-      showNotification(`Leave date cleared for ${nameData.displayName}. Services are now available for booking.`, "success");
+      
+      showNotification(`Leave date cleared for ${nameData.displayName}`, "success");
       markAsUpdated(nameData.normalizedName);
+
+      // Update local state
+      setUniqueNames(prev => prev.map(item => {
+        if (item.normalizedName === nameData.normalizedName) {
+          return { ...item, leave_date: null };
+        }
+        return item;
+      }));
+
       await fetchManpower();
       
-    } catch (err) {
-      showNotification("Clear completed", "success");
+    } catch (error) {
+      console.error("Error clearing leave date:", error);
+      showNotification("Failed to clear leave date", "error");
     } finally {
       setUpdating(prev => ({ ...prev, [nameData.normalizedName]: false }));
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "No leave scheduled";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   const handleLogout = () => {
-    console.log("👋 Logging out from ManpowerLeaveManager...");
     localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("role");
     navigate("/login");
   };
 
-  // If still checking auth
   if (!userInfo && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-500">Checking Authentication</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="animate-fade-in">
-          <CardContent className="p-12 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-500">Loading Team Data</span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center p-8 space-y-3">
+          <RefreshCw className="animate-spin mx-auto text-blue-600" size={24} />
+          <p className="text-xs text-gray-500 font-semibold font-sans">Resolving session security...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-8">
-        {/* Header with User Info */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="w-full px-6 py-8 max-w-none">
+      
+      {/* Top Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-all duration-300">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Calendar size={32} />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Team Leave Manager</h1>
-            <p className="text-gray-600">
-              {userInfo.role === "admin" ? "Admin View - All Team Members" : "Your Leave Management"}
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <span>📅</span> Workforce Leave Administration
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              Schedule unavailable leaves, manage technician block-out dates, and organize roster planning.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-sm text-gray-600">Logged in as</div>
-              <div className="font-medium text-gray-900">{userInfo.username}</div>
-              {/* <div className="text-xs text-gray-500 capitalize">{userInfo.role}</div> */}
-            </div>
-          </div>
         </div>
 
-        {/* Role-based Info Banner */}
-        {userInfo.role === "worker" && (
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-start">
-                <Info size={20} className="text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-blue-800 mb-1">Personal Leave Management</h4>
-                  <p className="text-blue-700 text-sm">
-                    You are viewing only your own leave schedule. When you set a leave date, 
-                    all your assigned services will be automatically marked as unavailable for that date.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Notification */}
-        {notification.show && (
-          <Card className={`mb-6 ${
-            notification.type === "error" 
-              ? "bg-red-50 border-red-200" 
-              : notification.type === "info"
-              ? "bg-blue-50 border-blue-200"
-              : "bg-green-50 border-green-200"
-          }`}>
-            <CardContent className="p-4">
-              <div className="flex items-center">
-                {notification.type === "success" && (
-                  <CheckCircle size={20} className="mr-2 text-green-600" />
-                )}
-                {notification.type === "error" && (
-                  <AlertCircle size={20} className="mr-2 text-red-600" />
-                )}
-                {notification.type === "info" && (
-                  <Info size={20} className="mr-2 text-blue-600" />
-                )}
-                <span className={`text-sm ${
-                  notification.type === "error" ? "text-red-700" :
-                  notification.type === "info" ? "text-blue-700" :
-                  "text-green-700"
-                }`}>{notification.message}</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                  <Users size={20} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold text-gray-900">{uniqueNames.length}</p>
-                  <p className="text-gray-600 text-sm">
-                    {userInfo.role === "admin" ? "Team Members" : "Your Services"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                  <Calendar size={20} className="text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {uniqueNames.filter(item => item.leave_date).length}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {userInfo.role === "admin" ? "On Leave" : "Scheduled Leave"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                  <RefreshCw size={20} className="text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {Object.keys(leaveUpdates).length}
-                  </p>
-                  <p className="text-gray-600 text-sm">Pending Updates</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        {uniqueNames.length === 0 ? (
-          <Card className="animate-fade-in">
-            <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users size={32} className="text-gray-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                {userInfo.role === "worker" 
-                  ? "No service assignments found" 
-                  : "No manpower data available"}
-              </h3>
-              <p className="text-gray-500">
-                {userInfo.role === "worker" 
-                  ? "You don't have any assigned services in the system yet." 
-                  : "There are no manpower entries in the system."}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                        {userInfo.role === "admin" ? "Team Member" : "Your Services"}
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                        Scheduled Leave
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                        Plan New Leave
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {uniqueNames.map((nameData, index) => {
-                      const isUpdating = updating[nameData.normalizedName];
-                      const hasUpdate = leaveUpdates[nameData.normalizedName];
-                      const hasCurrentLeave = nameData.leave_date;
-                      const hasNameVariations = nameData.nameVariations.length > 1;
-                      const initials = getInitials(nameData.displayName);
-                      const isRecentlyUpdated = updatedItems.has(nameData.normalizedName);
-                      
-                      return (
-                        <tr 
-                          key={nameData.normalizedName} 
-                          className={`transition-colors duration-200 hover:bg-gray-50 ${
-                            isRecentlyUpdated ? 'bg-green-50' : ''
-                          }`}
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center space-x-3">
-                              <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${
-                                hasNameVariations ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-                              }`}>
-                                <span className="font-semibold text-sm">
-                                  {initials}
-                                </span>
-                                {hasNameVariations && (
-                                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></div>
-                                )}
-                              </div>
-                              <div>
-                                <h3 className="text-sm font-medium text-gray-900">
-                                  {nameData.displayName}
-                                  {isRecentlyUpdated && (
-                                    <StatusBadge status="active" label="Updated" className="ml-2" />
-                                  )}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  {nameData.count} {nameData.count === 1 ? 'assigned service' : 'assigned services'}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          
-                          <td className="px-6 py-4">
-                            <StatusBadge 
-                              status={hasCurrentLeave ? "active" : "pending"} 
-                              label={formatDate(nameData.leave_date)}
-                            />
-                          </td>
-                          
-                          <td className="px-6 py-4">
-                            <div className="relative">
-                              <Input
-                                type="date"
-                                value={leaveUpdates[nameData.normalizedName] || ""}
-                                onChange={(e) => handleDateChange(nameData.normalizedName, e.target.value)}
-                                min={new Date().toISOString().split('T')[0]}
-                              />
-                            </div>
-                          </td>
-                          
-                          <td className="px-6 py-4">
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                onClick={() => updateLeaveDate(nameData)}
-                                disabled={isUpdating || !hasUpdate}
-                                leftIcon={<CheckCircle size={14} />}
-                                loading={isUpdating}
-                              >
-                                {isUpdating ? "Updating..." : "Update"}
-                              </Button>
-                              
-                              {hasCurrentLeave && (
-                                <Button
-                                  size="sm"
-                                  variant="danger"
-                                  onClick={() => clearLeaveDate(nameData)}
-                                  disabled={isUpdating}
-                                  leftIcon={<Trash2 size={14} />}
-                                >
-                                  Clear
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Info Section */}
-        <Card className="mt-6 bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-start">
-              <Info size={20} className="text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-blue-800 mb-1">
-                  {userInfo.role === "admin" 
-                    ? "Team Leave Management" 
-                    : "Personal Leave Management"}
-                </h4>
-                <p className="text-blue-700 text-sm">
-                  {userInfo.role === "admin"
-                    ? "Manage leave dates for all team members. Updates automatically sync with service bookings across the system."
-                    : "Manage your personal leave dates. When you set a leave, all your assigned services will be marked as unavailable for that date."}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500 text-sm">
-            Leave Management System • Real-time Service Synchronization • 
-            {userInfo.role === "admin" ? " Admin View" : " Worker View"}
-          </p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={fetchManpower}
+            className="h-11 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 font-medium px-4 text-gray-700 shadow-sm"
+            leftIcon={<RefreshCw size={16} className={loading ? "animate-spin" : ""} />}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleLogout}
+            className="h-11 rounded-xl font-medium px-4 shadow-sm"
+            leftIcon={<LogOut size={16} />}
+          >
+            Log Out
+          </Button>
         </div>
       </div>
+
+      {notification.show && (
+        <div className={`mb-6 p-4 rounded-xl border font-semibold flex items-center gap-2 shadow-sm ${
+          notification.type === "success" 
+            ? "bg-green-50 text-green-700 border-green-200" 
+            : "bg-red-50 text-red-700 border-red-200"
+        }`}>
+          {notification.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
+      {/* Database Leave Grid Table */}
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden mb-8">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-12 text-center text-gray-400 space-y-3">
+              <RefreshCw className="animate-spin mx-auto text-blue-500" size={24} />
+              <p className="text-xs">Fetching leave directory...</p>
+            </div>
+          ) : uniqueNames.length === 0 ? (
+            <div className="px-6 py-16 text-center max-w-md mx-auto flex flex-col items-center">
+              <div className="w-14 h-14 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                <Info size={24} />
+              </div>
+              <h4 className="text-sm font-bold text-gray-800">No personnel entries</h4>
+              <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">
+                You are not registered in the manpower roster directory.
+              </p>
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-full divide-y divide-gray-100">
+                <thead className="bg-[#F8FAFC]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Engineer Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Leave Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Update / Apply Leave</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {uniqueNames.map((nameData) => {
+                    const isUpdated = updatedItems.has(nameData.normalizedName);
+                    const isUpdating = updating[nameData.normalizedName];
+                    const pendingDate = leaveUpdates[nameData.normalizedName] || "";
+                    
+                    return (
+                      <tr 
+                        key={nameData.normalizedName} 
+                        className={`transition-colors duration-500 ${
+                          isUpdated ? "bg-green-50/70" : "hover:bg-blue-50/10"
+                        }`}
+                      >
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                              {nameData.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{nameData.displayName}</p>
+                              <span className="text-[10px] text-gray-400 font-medium">User Profile: {nameData.normalizedName}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-xs">
+                          {nameData.leave_date ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <CalendarIcon size={12} />
+                              {new Date(nameData.leave_date).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 font-semibold text-xs">🟢 Available (No Active Leaves)</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-xs">
+                          <div className="flex items-center gap-2 max-w-xs">
+                            <input
+                              type="date"
+                              value={pendingDate}
+                              onChange={(e) => handleDateChange(nameData.normalizedName, e.target.value)}
+                              className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
+                            />
+                            <Button
+                              size="sm"
+                              disabled={isUpdating || !pendingDate}
+                              onClick={() => updateLeaveDate(nameData)}
+                              className="rounded-lg text-xs"
+                            >
+                              {isUpdating ? "Saving..." : "Apply"}
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-xs font-semibold">
+                          {nameData.leave_date && (
+                            <button
+                              onClick={() => clearLeaveDate(nameData)}
+                              disabled={isUpdating}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                              title="Clear Leave Date"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

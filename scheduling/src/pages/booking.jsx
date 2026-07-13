@@ -8,8 +8,12 @@ import {
   UserCircle,
   FileText,
   Upload,
+  Layers,
+  ArrowRight,
+  Info,
+  ShieldCheck
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Textarea, Badge } from "../components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Textarea } from "../components/ui";
 
 const Booking = ({ currentUser, editId = null }) => {
   const [form, setForm] = useState({
@@ -127,10 +131,8 @@ const Booking = ({ currentUser, editId = null }) => {
     }
 
     try {
-      let res;
-
       if (isEdit) {
-        res = await axios.put(
+        await axios.put(
           `https://manpower.cmti.online/bookings/${editId}`,
           formData,
           {
@@ -139,7 +141,7 @@ const Booking = ({ currentUser, editId = null }) => {
           }
         );
       } else {
-        res = await axios.post(
+        await axios.post(
           "https://manpower.cmti.online/bookings/",
           formData,
           {
@@ -184,170 +186,214 @@ const Booking = ({ currentUser, editId = null }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="container-responsive max-w-2xl py-8">
-        <Card className="animate-fade-in">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <UserCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              {isEdit ? "Edit Booking" : "Service Booking"}
+    <div className="w-full px-6 py-8 max-w-2xl mx-auto">
+      
+      <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+        
+        {/* Card Header with Theme color */}
+        <CardHeader className="pb-6 border-b border-gray-50 bg-gray-50/20 flex flex-row items-center gap-3">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Layers size={24} />
+          </div>
+          <div>
+            <CardTitle className="text-base font-bold text-gray-800">
+              {isEdit ? "Edit Task Booking" : "New Service Booking Allocation"}
             </CardTitle>
-          </CardHeader>
+            <p className="text-xs text-gray-400 mt-0.5">Assign technician competencies, schedule dates, and check overlaps</p>
+          </div>
+        </CardHeader>
 
-          <CardContent>
-            <form
-              onSubmit={available ? handleSubmit : handleCheck}
-              className="space-y-6"
-            >
-              <Input
-                label="Customer Name"
-                name="customer"
-                value={form.customer}
-                onChange={handleChange}
-                required
-                placeholder="Enter customer name"
-                leftIcon={<UserCircle size={20} className="text-gray-400" />}
-              />
+        <CardContent className="p-6">
+          
+          {message && (
+            <div className={`mb-6 p-4 rounded-xl border font-semibold flex items-center gap-2 shadow-sm ${
+              message.type === "success" 
+                ? "bg-green-50 text-green-700 border-green-200" 
+                : "bg-red-50 text-red-700 border-red-200"
+            }`}>
+              {message.type === "success" ? <CheckCircle size={20} /> : <Info size={20} />}
+              <span className="text-xs">{message.text}</span>
+            </div>
+          )}
 
+          <form onSubmit={available ? handleSubmit : handleCheck} className="space-y-6">
+            
+            {/* Customer */}
+            <Input
+              label="Customer/Partner Name *"
+              name="customer"
+              value={form.customer}
+              onChange={handleChange}
+              required
+              placeholder="e.g. CMTI Aerospace Department"
+              leftIcon={<UserCircle size={14} className="text-gray-400" />}
+            />
+
+            {/* Service IDs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="Service ID"
+                label="Service ID *"
                 name="service_id"
                 value={form.service_id}
                 onChange={handleChange}
                 required
-                placeholder="Enter service ID"
+                placeholder="e.g. 5"
               />
 
               <Input
-                label="Service Name"
+                label="Service Template Name"
                 name="service_name"
                 value={form.service_name}
                 onChange={handleChange}
-                placeholder="Enter service name"
+                placeholder="e.g. Vibration Analysis"
+              />
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Start Date & Time *"
+                name="start_date"
+                type="datetime-local"
+                value={form.start_date}
+                onChange={handleChange}
+                required
+                leftIcon={<Calendar size={14} className="text-gray-400" />}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Start Date & Time"
-                  name="start_date"
-                  type="datetime-local"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  required
-                  leftIcon={<Calendar size={20} className="text-gray-400" />}
-                />
+              <Input
+                label="End Date & Time *"
+                name="end_date"
+                type="datetime-local"
+                value={form.end_date}
+                onChange={handleChange}
+                required
+                leftIcon={<Clock size={14} className="text-gray-400" />}
+              />
+            </div>
 
-                <Input
-                  label="End Date & Time"
-                  name="end_date"
-                  type="datetime-local"
-                  value={form.end_date}
-                  onChange={handleChange}
-                  required
-                  leftIcon={<Clock size={20} className="text-gray-400" />}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Input
+            {/* Pricing Parameters Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="col-span-2 md:col-span-1 space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
+                <input
                   name="category"
                   value={form.category}
                   onChange={handleChange}
-                  placeholder="Category"
-                  containerClassName="col-span-2 md:col-span-1"
+                  placeholder="industrial"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
                 />
+              </div>
 
-                <Input
+              <div className="col-span-2 md:col-span-1 space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Dept</label>
+                <input
                   name="department"
                   value={form.department}
                   onChange={handleChange}
-                  placeholder="Department"
-                  containerClassName="col-span-2 md:col-span-1"
+                  placeholder="SMPM"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
                 />
+              </div>
 
-                <Input
+              <div className="col-span-2 md:col-span-1 space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Price Type</label>
+                <input
                   name="price_type"
                   value={form.price_type}
                   onChange={handleChange}
-                  placeholder="per_hour / per_day"
-                  containerClassName="col-span-2 md:col-span-1"
+                  placeholder="per_hour"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
                 />
+              </div>
 
-                <Input
+              <div className="col-span-2 md:col-span-1 space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Rate (₹)</label>
+                <input
                   name="rate"
                   value={form.rate}
                   onChange={handleChange}
-                  placeholder="Rate"
-                  containerClassName="col-span-2 md:col-span-1"
+                  placeholder="1500"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white"
                 />
               </div>
+            </div>
 
+            {/* Remarks */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Remarks / Scope of work</label>
               <Textarea
-                label="Remarks"
                 name="remarks"
                 value={form.remarks}
                 onChange={handleChange}
-                placeholder="Enter any additional remarks"
+                placeholder="Enter any additional remarks or equipment details..."
                 rows={3}
               />
+            </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Upload PDF (optional)
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <input
-                    type="file"
-                    name="file"
-                    accept="application/pdf"
-                    onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
-                    className="w-full"
-                  />
-                  {form.file && (
-                    <p className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-2">
-                      <FileText size={16} />
-                      {form.file.name}
-                    </p>
-                  )}
-                </div>
-                {isEdit && form.file_url && (
-                  <a
-                    href={form.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm mt-2 inline-flex items-center gap-1"
-                  >
-                    <FileText size={16} />
-                    View Existing PDF
-                  </a>
+            {/* PDF Uploader */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                Attach Service Order Document (PDF)
+              </label>
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-400 transition-colors bg-gray-50/50">
+                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <input
+                  type="file"
+                  name="file"
+                  accept="application/pdf"
+                  onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
+                  className="w-full text-xs text-gray-500 max-w-xs mx-auto"
+                />
+                {form.file && (
+                  <p className="text-xs text-gray-600 mt-2 flex items-center justify-center gap-1 font-semibold">
+                    <FileText size={14} className="text-blue-500" />
+                    {form.file.name}
+                  </p>
                 )}
               </div>
+              {isEdit && form.file_url && (
+                <a
+                  href={form.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-2 inline-flex items-center gap-1"
+                >
+                  <FileText size={14} />
+                  View Uploaded AMC Document
+                </a>
+              )}
+            </div>
 
+            {/* Submit Action */}
+            <div className="pt-4 border-t border-gray-50">
               <Button
                 type="submit"
                 loading={loading}
                 fullWidth
                 size="lg"
-                variant={available ? "success" : "primary"}
-                leftIcon={available && <CheckCircle size={20} />}
+                className={`h-12 rounded-xl text-white font-medium shadow-sm transition-all ${
+                  available 
+                    ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100" 
+                    : "bg-blue-600 hover:bg-blue-700 shadow-blue-100"
+                }`}
+                leftIcon={available ? <ShieldCheck size={18} /> : null}
+                rightIcon={!available ? <ArrowRight size={18} /> : null}
               >
-                {loading ? "Processing..." : available ? (isEdit ? "Update Booking" : "Confirm Booking") : "Check Availability"}
+                {loading 
+                  ? "Processing Allocation..." 
+                  : available 
+                    ? (isEdit ? "Confirm Booking Modification" : "Allocate Service Booking") 
+                    : "Check Slot Schedule Overlaps"
+                }
               </Button>
-            </form>
+            </div>
 
-            {message && (
-              <div className={`mt-6 p-4 rounded-xl text-center ${
-                message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-              }`}>
-                {message.text}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          </form>
+
+        </CardContent>
+      </Card>
+
     </div>
   );
 };

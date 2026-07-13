@@ -28,6 +28,10 @@ export default function App() {
   );
 
   const [role, setRole] = useState(localStorage.getItem("role") || "worker");
+  
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    localStorage.getItem("sidebarCollapsed") === "true"
+  );
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -40,11 +44,15 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
+      <div className="min-h-screen flex bg-gray-50">
+        <Navbar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
 
-        <main className="flex-grow pt-20">
-          <div className="container-responsive">
+        <main className={`flex-grow min-w-0 transition-all duration-300 min-h-screen flex flex-col justify-between pt-16 ${
+          isLoggedIn 
+            ? (isSidebarCollapsed ? "lg:pl-20" : "lg:pl-64") 
+            : "pl-0"
+        }`}>
+          <div className="w-full">
             <Routes>
               <Route
                 path="/"
@@ -92,15 +100,15 @@ export default function App() {
               {!isLoggedIn && <Route path="*" element={<Navigate to="/login" />} />}
             </Routes>
           </div>
+          
+          <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
+            <div className="container-responsive">
+              <p className="text-center text-sm text-gray-500">
+                © {new Date().getFullYear()} CMTI — All Rights Reserved
+              </p>
+            </div>
+          </footer>
         </main>
-
-        <footer className="bg-white border-t border-gray-200 py-6">
-          <div className="container-responsive">
-            <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} CMTI — All Rights Reserved
-            </p>
-          </div>
-        </footer>
       </div>
     </Router>
   );
